@@ -31,20 +31,41 @@ data class AnagramItem(
 )
 
 val AnagramBank = listOf(
+  // Cortas (nivel 1) — antes solo había 4 palabras de ≤4 letras para 6 rondas,
+  // garantizaba repetición. Ahora hay 9.
   AnagramItem("SOL", "Astro central"),
+  AnagramItem("MAR", "Masa de agua salada"),
+  AnagramItem("PAZ", "Ausencia de conflicto"),
+  AnagramItem("VOZ", "Sonido al hablar"),
   AnagramItem("VIDA", "Lo que disfrutamos y cuidamos"),
+  AnagramItem("LUNA", "Satélite de la Tierra"),
+  AnagramItem("AGUA", "Recurso vital, se bebe"),
+  AnagramItem("ROSA", "Flor con espinas"),
+  AnagramItem("RÍOS", "Corrientes de agua dulce"),
+  // Medias (nivel 2)
   AnagramItem("MENTE", "Capacidad cognitiva humana"),
   AnagramItem("LIBRO", "Contiene historias y saber"),
   AnagramItem("RUTAS", "Caminos para explorar"),
   AnagramItem("CALMA", "Estado de tranquilidad"),
+  AnagramItem("FUERZA", "Capacidad de ejercer energía"),
   AnagramItem("TIEMPO", "Pasa segundo a segundo"),
-  AnagramItem("SINFONIA", "Armonía de muchas notas")
+  AnagramItem("SONRISA", "Gesto de alegría en la cara"),
+  // Largas (nivel 3+)
+  AnagramItem("MEMORIA", "Capacidad de recordar"),
+  AnagramItem("PACIENCIA", "Virtud de esperar sin frustrarse"),
+  AnagramItem("SINFONIA", "Armonía de muchas notas"),
+  AnagramItem("CONCIENCIA", "Percepción de uno mismo"),
+  AnagramItem("EQUILIBRIO", "Estado de estabilidad y balance"),
+  AnagramItem("GRATITUD", "Sentimiento de agradecimiento"),
+  AnagramItem("CREATIVIDAD", "Capacidad de imaginar cosas nuevas"),
+  AnagramItem("RESILIENCIA", "Capacidad de adaptarse tras la adversidad")
 )
 
 @Composable
 fun AnagramasGame(
   level: Int,
   timed: Boolean,
+  intensity: Int = 0,
   onFinish: (score: Int, correct: Int, total: Int) -> Unit,
   onQuit: () -> Unit
 ) {
@@ -52,16 +73,33 @@ fun AnagramasGame(
   var currentRound by remember { mutableStateOf(1) }
   var correctCount by remember { mutableStateOf(0) }
 
-  // Filter words roughly by length based on level
-  val availableWords = remember(level) {
+  // Filtro por largo de palabra según nivel — desde nivel 3, el largo mínimo
+  // sigue subiendo con `intensity` en vez de quedar fijo en ">=5" para siempre,
+  // así "ya me sé estas palabras" deja de ser cierto en nivel 5 sostenido.
+  val availableWords = remember(level, intensity) {
     when (level) {
       1 -> AnagramBank.filter { it.targetWord.length <= 4 }
       2 -> AnagramBank.filter { it.targetWord.length in 4..5 }
-      else -> AnagramBank.filter { it.targetWord.length >= 5 }
+      else -> {
+        val minLen = (5 + intensity / 8).coerceAtMost(8)
+        AnagramBank.filter { it.targetWord.length >= minLen }
+      }
     }.ifEmpty { AnagramBank }
   }
 
-  var currentItem by remember { mutableStateOf(availableWords.random()) }
+  // Evita repetir palabra dentro de la MISMA partida mientras queden sin usar
+  // en el pool filtrado; recién quedan libres de nuevo cuando se agota (raro,
+  // dado que las pools ahora tienen más de 6 palabras en casi todos los casos).
+  var usedWords by remember { mutableStateOf(setOf<String>()) }
+  fun pickNextWord(): AnagramItem {
+    val unused = availableWords.filter { it.targetWord !in usedWords }
+    val pool = unused.ifEmpty { availableWords }
+    val picked = pool.random()
+    usedWords = if (unused.isEmpty()) setOf(picked.targetWord) else usedWords + picked.targetWord
+    return picked
+  }
+
+  var currentItem by remember { mutableStateOf(pickNextWord()) }
   var scrambledLetters by remember {
     mutableStateOf(scramble(currentItem.targetWord))
   }
@@ -105,7 +143,7 @@ fun AnagramasGame(
       onFinish(finalScore, correctCount, totalTrials)
     } else {
       currentRound++
-      currentItem = availableWords.random()
+      currentItem = pickNextWord()
       scrambledLetters = scramble(currentItem.targetWord)
       currentAssembly = emptyList()
       usedLetterIndices = emptySet()

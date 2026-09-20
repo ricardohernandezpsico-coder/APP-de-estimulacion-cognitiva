@@ -28,6 +28,7 @@ import kotlin.random.Random
 fun RutaTesoroGame(
   level: Int,
   timed: Boolean,
+  intensity: Int = 0,
   onFinish: (score: Int, correct: Int, total: Int) -> Unit,
   onQuit: () -> Unit
 ) {
@@ -37,13 +38,17 @@ fun RutaTesoroGame(
 
   val gridSize = if (level <= 2) 3 else 4 // 3x3 or 4x4
   val totalCells = gridSize * gridSize
+  // Más allá de nivel 5, intensity sigue sumando tesoros — tope en 10 de 16
+  // celdas (más que eso deja de ser "memorizar" para pasar a "adivinar").
   val treasureCount = when (level) {
     1 -> 3
     2 -> 4
     3 -> 5
     4 -> 6
-    else -> 7
+    else -> (7 + intensity / 5).coerceAtMost(10)
   }
+  // Tiempo para memorizar: baja de 2.4s a un piso de 1.2s con la maestría.
+  val showPhaseMs = (2400 - intensity * 40).coerceAtLeast(1200)
 
   var treasurePositions by remember { mutableStateOf(setOf<Int>()) }
   var discoveredPositions by remember { mutableStateOf(setOf<Int>()) }
@@ -65,7 +70,7 @@ fun RutaTesoroGame(
 
   LaunchedEffect(currentRound) {
     setupNewRound()
-    delay(2400) // Show diamonds for 2.4s
+    delay(showPhaseMs.toLong())
     isShowingPhase = false
   }
 

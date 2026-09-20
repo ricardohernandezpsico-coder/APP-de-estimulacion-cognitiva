@@ -133,60 +133,70 @@ fun NeuroVidaApp(viewModel: NeuroVidaViewModel) {
               "calculo" -> CalculoGame(
                 level = session.level,
                 timed = session.timed,
+                intensity = session.intensity,
                 onFinish = { score, correct, total -> viewModel.finishActiveGame(score, correct, total) },
                 onQuit = { viewModel.closeGameOrResult() }
               )
               "parejas" -> ParejasGame(
                 level = session.level,
                 timed = session.timed,
+                intensity = session.intensity,
                 onFinish = { score, correct, total -> viewModel.finishActiveGame(score, correct, total) },
                 onQuit = { viewModel.closeGameOrResult() }
               )
               "stroop" -> StroopGame(
                 level = session.level,
                 timed = session.timed,
+                intensity = session.intensity,
                 onFinish = { score, correct, total -> viewModel.finishActiveGame(score, correct, total) },
                 onQuit = { viewModel.closeGameOrResult() }
               )
               "secuencia" -> SecuenciaGame(
                 level = session.level,
                 timed = session.timed,
+                intensity = session.intensity,
                 onFinish = { score, correct, total -> viewModel.finishActiveGame(score, correct, total) },
                 onQuit = { viewModel.closeGameOrResult() }
               )
               "rutatesoro" -> RutaTesoroGame(
                 level = session.level,
                 timed = session.timed,
+                intensity = session.intensity,
                 onFinish = { score, correct, total -> viewModel.finishActiveGame(score, correct, total) },
                 onQuit = { viewModel.closeGameOrResult() }
               )
               "cambiochip" -> CambioChipGame(
                 level = session.level,
                 timed = session.timed,
+                intensity = session.intensity,
                 onFinish = { score, correct, total -> viewModel.finishActiveGame(score, correct, total) },
                 onQuit = { viewModel.closeGameOrResult() }
               )
               "series" -> SeriesGame(
                 level = session.level,
                 timed = session.timed,
+                intensity = session.intensity,
                 onFinish = { score, correct, total -> viewModel.finishActiveGame(score, correct, total) },
                 onQuit = { viewModel.closeGameOrResult() }
               )
               "anagramas" -> AnagramasGame(
                 level = session.level,
                 timed = session.timed,
+                intensity = session.intensity,
                 onFinish = { score, correct, total -> viewModel.finishActiveGame(score, correct, total) },
                 onQuit = { viewModel.closeGameOrResult() }
               )
               "comparacion" -> ComparacionGame(
                 level = session.level,
                 timed = session.timed,
+                intensity = session.intensity,
                 onFinish = { score, correct, total -> viewModel.finishActiveGame(score, correct, total) },
                 onQuit = { viewModel.closeGameOrResult() }
               )
               else -> CalculoGame(
                 level = session.level,
                 timed = session.timed,
+                intensity = session.intensity,
                 onFinish = { score, correct, total -> viewModel.finishActiveGame(score, correct, total) },
                 onQuit = { viewModel.closeGameOrResult() }
               )

@@ -10,18 +10,20 @@ import androidx.room.RoomDatabase
     GameResultEntity::class,
     GameProgressEntity::class,
     DailySessionEntity::class,
-    AchievementEntity::class,
-    UserProfileEntity::class
+    UserProfileEntity::class,
+    DomainMasteryEntity::class,
+    ClaimedWeeklyChallengeEntity::class
   ],
-  version = 3,
+  version = 6,
   exportSchema = false
 )
 abstract class NeuroVidaDatabase : RoomDatabase() {
   abstract fun gameResultDao(): GameResultDao
   abstract fun gameProgressDao(): GameProgressDao
   abstract fun dailySessionDao(): DailySessionDao
-  abstract fun achievementDao(): AchievementDao
   abstract fun userProfileDao(): UserProfileDao
+  abstract fun domainMasteryDao(): DomainMasteryDao
+  abstract fun claimedWeeklyChallengeDao(): ClaimedWeeklyChallengeDao
 
   companion object {
     @Volatile

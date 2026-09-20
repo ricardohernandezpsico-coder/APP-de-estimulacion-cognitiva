@@ -34,14 +34,21 @@ data class SeriesItem(
 fun SeriesGame(
   level: Int,
   timed: Boolean,
+  intensity: Int = 0,
   onFinish: (score: Int, correct: Int, total: Int) -> Unit,
   onQuit: () -> Unit
 ) {
   val totalTrials = 8
   var currentRound by remember { mutableStateOf(1) }
   var correctCount by remember { mutableStateOf(0) }
+  var currentStreak by remember { mutableStateOf(0) }
 
-  var currentItem by remember { mutableStateOf(generateSeries(level)) }
+  // DDA: igual criterio que Calculo — 3 aciertos seguidos EN ESTA PARTIDA
+  // adelantan dificultad que normalmente solo llegaría con masteryStreak entre
+  // sesiones. Se resetea a 0 apenas se falla una serie.
+  val liveIntensity = intensity + (currentStreak / 3) * 2
+
+  var currentItem by remember { mutableStateOf(generateSeries(level, liveIntensity)) }
   var selectedChoice by remember { mutableStateOf<String?>(null) }
   var showExplanation by remember { mutableStateOf(false) }
 
@@ -55,8 +62,10 @@ fun SeriesGame(
 
     if (isCorrect) {
       correctCount++
+      currentStreak++
       flashSuccess = true
     } else {
+      currentStreak = 0
       flashSuccess = false
     }
     showExplanation = true
@@ -73,7 +82,7 @@ fun SeriesGame(
         onFinish(finalScore, correctCount, totalTrials)
       } else {
         currentRound++
-        currentItem = generateSeries(level)
+        currentItem = generateSeries(level, liveIntensity)
         selectedChoice = null
       }
     }
@@ -211,70 +220,99 @@ fun SeriesGame(
   }
 }
 
-private fun generateSeries(level: Int): SeriesItem {
-  val type = Random.nextInt(5)
+/**
+ * Antes solo el tipo "multiplicación" reaccionaba al nivel (y solo 2 escalones);
+ * los otros 4 tipos eran idénticos del nivel 1 al 5. Ahora `boost` (nivel +
+ * maestría) empuja pasos, magnitudes y complejidad en los 5 tipos, y sigue
+ * subiendo sin límite más allá de nivel 5 vía `intensity`.
+ */
+private fun generateSeries(level: Int, intensity: Int = 0): SeriesItem {
+  val boost = level + intensity / 3
+  // Del nivel 4 en adelante se suma un 6to tipo (cubos) — más difícil de
+  // reconocer que los cuadrados y crece mucho más rápido.
+  val typeCount = if (level >= 4) 6 else 5
+  val type = Random.nextInt(typeCount)
+  val tightDelta = (8 - intensity / 4).coerceAtLeast(3)
   return when (type) {
     0 -> {
-      // Linear step (+k)
-      val start = Random.nextInt(2, 20)
-      val step = Random.nextInt(2, 6)
+      // Linear step (+k), paso y arranque crecen con boost
+      val step = Random.nextInt(2 + boost / 2, 6 + boost)
+      val start = Random.nextInt(2, 20 + boost * 2)
       val s1 = start
       val s2 = s1 + step
       val s3 = s2 + step
       val s4 = s3 + step
       val ans = s4 + step
-      createSeriesItem("$s1,  $s2,  $s3,  $s4,  ?", ans.toString(), "Suma fija de +$step en cada término")
+      createSeriesItem("$s1,  $s2,  $s3,  $s4,  ?", ans.toString(), "Suma fija de +$step en cada término", tightDelta)
     }
     1 -> {
-      // Multiplication (*2 or *3)
-      val mult = if (level <= 2) 2 else 3
+      // Multiplication: el multiplicador ya no se topa en 3
+      val mult = when {
+        level <= 2 -> 2
+        level == 3 -> 3
+        level == 4 -> 4
+        else -> (4 + intensity / 6).coerceAtMost(7)
+      }
       val start = Random.nextInt(2, 5)
       val s1 = start
       val s2 = s1 * mult
       val s3 = s2 * mult
       val s4 = s3 * mult
       val ans = s4 * mult
-      createSeriesItem("$s1,  $s2,  $s3,  $s4,  ?", ans.toString(), "Multiplicación por $mult en cada paso")
+      createSeriesItem("$s1,  $s2,  $s3,  $s4,  ?", ans.toString(), "Multiplicación por $mult en cada paso", tightDelta)
     }
     2 -> {
-      // Decreasing (-k)
-      val step = Random.nextInt(3, 8)
-      val start = 50 + step * 4
+      // Decreasing (-k), paso crece con boost
+      val step = Random.nextInt(3 + boost / 2, 8 + boost)
+      val start = 50 + boost * 3 + step * 4
       val s1 = start
       val s2 = s1 - step
       val s3 = s2 - step
       val s4 = s3 - step
       val ans = s4 - step
-      createSeriesItem("$s1,  $s2,  $s3,  $s4,  ?", ans.toString(), "Resta constante de -$step en cada paso")
+      createSeriesItem("$s1,  $s2,  $s3,  $s4,  ?", ans.toString(), "Resta constante de -$step en cada paso", tightDelta)
     }
     3 -> {
-      // Increasing difference (+1, +2, +3, +4...)
-      val start = Random.nextInt(1, 10)
+      // Increasing difference: la unidad de incremento crece con boost
+      // (antes siempre +2,+4,+6,+8 sin importar el nivel)
+      val incUnit = 2 + boost / 2
+      val start = Random.nextInt(1, 10 + boost)
       val s1 = start
-      val s2 = s1 + 2
-      val s3 = s2 + 4
-      val s4 = s3 + 6
-      val ans = s4 + 8
-      createSeriesItem("$s1,  $s2,  $s3,  $s4,  ?", ans.toString(), "Diferencia creciente: +2, +4, +6, +8...")
+      val s2 = s1 + incUnit
+      val s3 = s2 + incUnit * 2
+      val s4 = s3 + incUnit * 3
+      val ans = s4 + incUnit * 4
+      createSeriesItem("$s1,  $s2,  $s3,  $s4,  ?", ans.toString(), "Diferencia creciente: +$incUnit, +${incUnit * 2}, +${incUnit * 3}, +${incUnit * 4}...", tightDelta)
     }
-    else -> {
-      // Squares
-      val offset = Random.nextInt(1, 4)
+    4 -> {
+      // Squares: el punto de partida crece con boost (números más grandes,
+      // menos evidente que son cuadrados a simple vista)
+      val offset = Random.nextInt(1, 4 + boost / 3)
       val s1 = (offset) * (offset)
       val s2 = (offset + 1) * (offset + 1)
       val s3 = (offset + 2) * (offset + 2)
       val s4 = (offset + 3) * (offset + 3)
       val ans = (offset + 4) * (offset + 4)
-      createSeriesItem("$s1,  $s2,  $s3,  $s4,  ?", ans.toString(), "Cuadrados perfectos consecutivos")
+      createSeriesItem("$s1,  $s2,  $s3,  $s4,  ?", ans.toString(), "Cuadrados perfectos consecutivos", tightDelta)
+    }
+    else -> {
+      // Cubes: solo desde nivel 4 — crecen mucho más rápido que los cuadrados
+      val offset = Random.nextInt(1, 3)
+      val s1 = offset * offset * offset
+      val s2 = (offset + 1).let { it * it * it }
+      val s3 = (offset + 2).let { it * it * it }
+      val s4 = (offset + 3).let { it * it * it }
+      val ans = (offset + 4).let { it * it * it }
+      createSeriesItem("$s1,  $s2,  $s3,  $s4,  ?", ans.toString(), "Cubos perfectos consecutivos", tightDelta)
     }
   }
 }
 
-private fun createSeriesItem(sequenceText: String, answer: String, explanation: String): SeriesItem {
+private fun createSeriesItem(sequenceText: String, answer: String, explanation: String, deltaRange: Int = 8): SeriesItem {
   val intAns = answer.toIntOrNull() ?: 20
   val opts = mutableSetOf(answer)
   while (opts.size < 4) {
-    val delta = Random.nextInt(-8, 9)
+    val delta = Random.nextInt(-deltaRange, deltaRange + 1)
     if (delta != 0) {
       opts.add((intAns + delta).toString())
     }

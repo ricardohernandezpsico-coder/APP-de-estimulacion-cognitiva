@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -30,7 +31,9 @@ data class ActiveGameSession(
   val gameDef: GameDefinition,
   val level: Int,
   val timed: Boolean,
-  val isDailyFlow: Boolean = false
+  val isDailyFlow: Boolean = false,
+  // Progresión sin techo más allá de nivel 5 (Experto) — ver GameProgressEntity.masteryStreak.
+  val intensity: Int = 0
 )
 
 data class DomainStats(
@@ -47,6 +50,14 @@ class NeuroVidaViewModel(application: Application) : AndroidViewModel(applicatio
   val allProfiles = repository.allProfiles
   val gameHistory = repository.gameHistory
   val gameLevels = repository.gameLevels
+  val gameIntensity = repository.gameIntensity
+  val weeklyChallengeProgress = repository.weeklyChallengeProgress
+
+  // Meta-progresión por dominio (etapa 4): DomainMasteryInfo deriva tier/label
+  // a partir de la XP cruda que guarda el repositorio.
+  val domainMasteryInfo: StateFlow<List<DomainMasteryInfo>> = repository.domainMastery.map { xpMap ->
+    DomainType.values().map { d -> DomainMasteryInfo(domain = d, xp = xpMap[d] ?: 0) }
+  }.stateIn(viewModelScope, SharingStarted.Eagerly, DomainType.values().map { DomainMasteryInfo(it, 0) })
   val dailySession = repository.dailySession
 
   private val _currentTab = MutableStateFlow(AppTab.HOY)
@@ -57,9 +68,6 @@ class NeuroVidaViewModel(application: Application) : AndroidViewModel(applicatio
 
   private val _lastResult = MutableStateFlow<Pair<GamePlayResult, Boolean>?>(null)
   val lastResult: StateFlow<Pair<GamePlayResult, Boolean>?> = _lastResult.asStateFlow()
-
-  private val _newAchievementUnlocked = MutableStateFlow<AchievementItem?>(null)
-  val newAchievementUnlocked: StateFlow<AchievementItem?> = _newAchievementUnlocked.asStateFlow()
 
   // Computed streak
   val currentStreak: StateFlow<Int> = combine(gameHistory) { history ->
@@ -152,11 +160,20 @@ class NeuroVidaViewModel(application: Application) : AndroidViewModel(applicatio
     }
   }
 
+  // Solo el modo adaptativo acumula masteryStreak (juego real, historial real);
+  // los modos de dificultad fija (Principiante/Intermedio/Avanzado/Personalizada)
+  // no tienen ese concepto porque el usuario ya eligió congelar el nivel.
+  fun getEffectiveIntensityForGame(gameId: String): Int {
+    if (userSettings.value.difficultyMode != DifficultyMode.ADAPTIVE) return 0
+    return gameIntensity.value[gameId] ?: 0
+  }
+
   fun launchGame(gameId: String, customLevel: Int? = null, customTimed: Boolean? = null, isDailyFlow: Boolean = false) {
     val def = GameRegistry.getById(gameId) ?: return
     val lvl = customLevel ?: getEffectiveLevelForGame(gameId)
     val timed = customTimed ?: userSettings.value.defaultTimed
-    _activeGame.value = ActiveGameSession(def, lvl, timed, isDailyFlow)
+    val intensity = if (lvl >= 5) getEffectiveIntensityForGame(gameId) else 0
+    _activeGame.value = ActiveGameSession(def, lvl, timed, isDailyFlow, intensity)
     _lastResult.value = null
   }
 
@@ -294,12 +311,6 @@ class NeuroVidaViewModel(application: Application) : AndroidViewModel(applicatio
 
   fun triggerTestNotification() {
     CognitiveReminderWorker.triggerImmediateTestReminder(getApplication())
-  }
-
-  fun getAchievements(): List<AchievementItem> = repository.getAllAchievements()
-
-  fun dismissAchievementBanner() {
-    _newAchievementUnlocked.value = null
   }
 
   fun resetData() {

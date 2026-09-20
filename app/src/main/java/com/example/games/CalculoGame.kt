@@ -32,10 +32,21 @@ data class MathQuestion(
   val options: List<Int>
 )
 
+/**
+ * Tiempo base por nivel, con recorte continuo por `intensity` (maestría más allá de
+ * nivel 5) — igual filosofía que Stroop: el reto nunca deja de crecer.
+ */
+private fun baseTimeForCalculo(level: Int, intensity: Int): Int {
+  val byLevel = 16 - level // 15..11
+  val fromMastery = intensity / 2
+  return (byLevel - fromMastery).coerceAtLeast(6)
+}
+
 @Composable
 fun CalculoGame(
   level: Int,
   timed: Boolean,
+  intensity: Int = 0,
   onFinish: (score: Int, correct: Int, total: Int) -> Unit,
   onQuit: () -> Unit
 ) {
@@ -45,14 +56,22 @@ fun CalculoGame(
   var currentStreak by remember { mutableStateOf(0) }
   var scorePoints by remember { mutableStateOf(0) }
 
-  var currentQuestion by remember { mutableStateOf(generateQuestion(level)) }
+  // DDA: cada 3 aciertos seguidos DENTRO de esta partida suman dureza extra
+  // (como si fuera intensity temporal) — se autocorrige solo, porque vuelve a 0
+  // apenas se falla una. Así encadenar respuestas correctas no se siente "más
+  // de lo mismo": el próximo ítem ya viene un poco más exigente sin esperar a
+  // la siguiente sesión.
+  val liveIntensity = intensity + (currentStreak / 3) * 2
+
+  var currentQuestion by remember { mutableStateOf(generateQuestion(level, liveIntensity)) }
   var selectedAnswer by remember { mutableStateOf<Int?>(null) }
   var showFeedbackFlash by remember { mutableStateOf(false) }
   var flashSuccess by remember { mutableStateOf(true) }
   var streakPopupText by remember { mutableStateOf<String?>(null) }
 
+  val baseTime = baseTimeForCalculo(level, liveIntensity)
   // Timer countdown if timed mode
-  var timeLeft by remember { mutableStateOf(if (timed) 15 else null) }
+  var timeLeft by remember { mutableStateOf(if (timed) baseTime else null) }
 
   fun handleSelection(chosen: Int, correct: Int) {
     if (selectedAnswer != null) return
@@ -79,7 +98,7 @@ fun CalculoGame(
 
   LaunchedEffect(currentRound, timed) {
     if (timed) {
-      timeLeft = 15
+      timeLeft = baseTime
       while (timeLeft != null && timeLeft!! > 0) {
         delay(1000)
         timeLeft = timeLeft!! - 1
@@ -101,7 +120,7 @@ fun CalculoGame(
         onFinish(finalScore, correctCount, totalTrials)
       } else {
         currentRound++
-        currentQuestion = generateQuestion(level)
+        currentQuestion = generateQuestion(level, liveIntensity)
         selectedAnswer = null
       }
     }
@@ -279,8 +298,13 @@ fun CalculoGame(
   }
 }
 
-private fun generateQuestion(level: Int): MathQuestion {
+private fun generateQuestion(level: Int, intensity: Int = 0): MathQuestion {
   val r = Random
+  // Más allá de nivel 5 (Experto), cada tramo de maestría sigue empujando los
+  // números hacia arriba y los distractores hacia números más parecidos entre sí
+  // — el nivel 5 deja de ser un techo real.
+  val boost = if (level >= 5) intensity * 2 else 0
+  val tightDelta = (7 - intensity / 4).coerceAtLeast(3)
   return when (level) {
     1 -> {
       val isAdd = r.nextBoolean()
@@ -315,32 +339,57 @@ private fun generateQuestion(level: Int): MathQuestion {
       }
     }
     3 -> {
-      val a = r.nextInt(6, 12)
-      val b = r.nextInt(4, 12)
-      createQuestion("$a × $b = ?", a * b)
+      // Antes solo multiplicación acá; ahora alterna con división (limpia, sin
+      // resto) — "aritmética mental" sin dividir nunca era un hueco de contenido.
+      if (r.nextBoolean()) {
+        val a = r.nextInt(6, 12)
+        val b = r.nextInt(4, 12)
+        createQuestion("$a × $b = ?", a * b)
+      } else {
+        val divisor = r.nextInt(3, 9)
+        val quotient = r.nextInt(4, 12)
+        createQuestion("${divisor * quotient} ÷ $divisor = ?", quotient)
+      }
     }
     4 -> {
-      val a = r.nextInt(5, 12)
-      val b = r.nextInt(3, 9)
-      val c = r.nextInt(2, 15)
-      val isSub = r.nextBoolean()
-      val ans = if (isSub) a * b - c else a * b + c
-      val sign = if (isSub) "−" else "+"
-      createQuestion("($a × $b) $sign $c = ?", ans)
+      if (r.nextBoolean()) {
+        val a = r.nextInt(5, 12)
+        val b = r.nextInt(3, 9)
+        val c = r.nextInt(2, 15)
+        val isSub = r.nextBoolean()
+        val ans = if (isSub) a * b - c else a * b + c
+        val sign = if (isSub) "−" else "+"
+        createQuestion("($a × $b) $sign $c = ?", ans)
+      } else {
+        // División compuesta: (a × b) ÷ c, siempre exacta
+        val c = r.nextInt(2, 6)
+        val quotient = r.nextInt(4, 15)
+        val product = c * quotient
+        val a = (2..product / 2).filter { product % it == 0 }.randomOrNull() ?: 1
+        val b = product / a
+        createQuestion("($a × $b) ÷ $c = ?", quotient)
+      }
     }
     else -> {
-      val a = r.nextInt(11, 20)
-      val b = r.nextInt(6, 15)
-      val c = r.nextInt(10, 30)
-      createQuestion("$a × $b − $c = ?", a * b - c)
+      if (r.nextBoolean()) {
+        val a = r.nextInt(11 + boost, 20 + boost)
+        val b = r.nextInt(6 + boost / 2, 15 + boost / 2)
+        val c = r.nextInt(10 + boost, 30 + boost)
+        createQuestion("$a × $b − $c = ?", a * b - c, tightDelta)
+      } else {
+        // División con números más grandes que en nivel 3, sigue creciendo con boost
+        val divisor = r.nextInt(4 + boost / 3, 9 + boost / 2)
+        val quotient = r.nextInt(6 + boost / 2, 18 + boost)
+        createQuestion("${divisor * quotient} ÷ $divisor = ?", quotient, tightDelta)
+      }
     }
   }
 }
 
-private fun createQuestion(prompt: String, answer: Int): MathQuestion {
+private fun createQuestion(prompt: String, answer: Int, deltaRange: Int = 6): MathQuestion {
   val options = mutableSetOf(answer)
   while (options.size < 4) {
-    val delta = Random.nextInt(-6, 7)
+    val delta = Random.nextInt(-deltaRange, deltaRange + 1)
     if (delta != 0) {
       val candidate = (answer + delta).coerceAtLeast(0)
       options.add(candidate)

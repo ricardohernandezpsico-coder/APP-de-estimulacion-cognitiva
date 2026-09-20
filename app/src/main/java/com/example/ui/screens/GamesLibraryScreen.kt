@@ -222,7 +222,12 @@ fun GamesLibraryScreen(
 
     // Game Intro Dialog
     gameToIntro?.let { game ->
-      val currentLevel = gameLevels[game.id] ?: 1
+      // OJO: antes esto leía gameLevels[game.id] directo, que es el nivel adaptativo
+      // guardado sin importar el modo de dificultad elegido en Ajustes — significaba
+      // que "Avanzado" (nivel 5 fijo) nunca se aplicaba de verdad al jugar. Ahora usa
+      // el nivel efectivo del ViewModel (respeta Principiante/Intermedio/Avanzado/
+      // Personalizada) como base, y Suave/Desafío siguen ajustando ±1 sobre esa base.
+      val currentLevel = viewModel.getEffectiveLevelForGame(game.id)
       var levelOffset by remember { mutableStateOf(0) } // -1 (Suave), 0 (Equilibrado), +1 (Desafío)
       var isTimedMode by remember { mutableStateOf(userSettings.defaultTimed) }
 

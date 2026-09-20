@@ -47,7 +47,12 @@ data class GameProgressEntity(
   val currentLevel: Int = 1,
   val highestScore: Int = 0,
   val totalGamesPlayed: Int = 0,
-  val lastPlayedTimestamp: Long = 0L
+  val lastPlayedTimestamp: Long = 0L,
+  // Progresión sin techo: currentLevel se tapa en 5 (Experto) a propósito — es la
+  // etiqueta visible (Principiante..Experto). masteryStreak sigue subiendo sin límite
+  // mientras se siga rindiendo bien en nivel 5, y es lo que de verdad endurece el juego
+  // (tiempos, rangos) para que un usuario "Experto" nunca deje de sentir presión.
+  val masteryStreak: Int = 0
 )
 
 @Entity(tableName = "daily_sessions")
@@ -76,10 +81,15 @@ fun DailySessionState.toEntity(): DailySessionEntity = DailySessionEntity(
   scoresRaw = scores.joinToString(",")
 )
 
-@Entity(tableName = "unlocked_achievements")
-data class AchievementEntity(
-  @PrimaryKey val id: String,
-  val unlockedAt: Long = System.currentTimeMillis()
+@Entity(tableName = "domain_mastery")
+data class DomainMasteryEntity(
+  @PrimaryKey val domain: String, // DomainType.name
+  val xp: Int = 0
+)
+
+@Entity(tableName = "claimed_weekly_challenges")
+data class ClaimedWeeklyChallengeEntity(
+  @PrimaryKey val id: String // "<weekKey>|<challengeKey>"
 )
 
 @Entity(tableName = "user_profile")

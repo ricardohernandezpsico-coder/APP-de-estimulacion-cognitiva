@@ -1006,7 +1006,7 @@ fun SettingsScreen(
     AlertDialog(
       onDismissRequest = { showResetDialog = false },
       title = { Text("¿Restablecer datos?") },
-      text = { Text("Esta acción borrará el historial de partidas, niveles y logros guardados en este dispositivo.") },
+      text = { Text("Esta acción borrará el historial de partidas y niveles guardados en este dispositivo.") },
       confirmButton = {
         TextButton(
           onClick = {

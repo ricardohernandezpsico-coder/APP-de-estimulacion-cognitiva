@@ -7,22 +7,16 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.model.GameRegistry
-import com.example.model.LevelTier
 import com.example.ui.components.DomainChip
 import com.example.ui.theme.*
 import com.example.viewmodel.NeuroVidaViewModel
@@ -34,10 +28,8 @@ fun ProgressScreen(
   viewModel: NeuroVidaViewModel,
   modifier: Modifier = Modifier
 ) {
-  val domainStats by viewModel.domainStats.collectAsState()
+  val domainMastery by viewModel.domainMasteryInfo.collectAsState()
   val history by viewModel.gameHistory.collectAsState()
-  val achievements = remember(history) { viewModel.getAchievements() }
-  val unlockedCount = achievements.count { it.isUnlocked }
 
   val dateFormatter = remember { SimpleDateFormat("dd MMM, HH:mm", Locale.getDefault()) }
 
@@ -85,14 +77,27 @@ fun ProgressScreen(
           modifier = Modifier.padding(20.dp),
           verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-          Text(
-            text = "Competencia por Área",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold
-          )
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+          ) {
+            Text(
+              text = "Maestría por Dominio",
+              style = MaterialTheme.typography.titleMedium,
+              fontWeight = FontWeight.Bold
+            )
+            Text(
+              text = "XP sin límite",
+              style = MaterialTheme.typography.labelSmall,
+              color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+          }
 
-          domainStats.forEach { stat ->
-            val tier = LevelTier.fromLevel(stat.competenceLevel)
+          // A diferencia del nivel de juego (tope visible en 5), esto nunca deja
+          // de crecer: jugar CUALQUIER juego del dominio suma, así que un dominio
+          // con todos sus juegos en Experto sigue dando sensación de avance.
+          domainMastery.forEach { info ->
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
               Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -104,11 +109,11 @@ fun ProgressScreen(
                     modifier = Modifier
                       .size(10.dp)
                       .clip(CircleShape)
-                      .background(stat.domain.color)
+                      .background(info.domain.color)
                   )
                   Spacer(modifier = Modifier.width(8.dp))
                   Text(
-                    text = stat.domain.displayName,
+                    text = info.domain.displayName,
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
@@ -116,121 +121,24 @@ fun ProgressScreen(
                 }
 
                 Text(
-                  text = "Nivel ${stat.competenceLevel} (${tier.tierName})",
+                  text = "${info.tier.icon} ${info.tier.tierName} · ${info.xpLabel}",
                   style = MaterialTheme.typography.labelSmall,
                   fontWeight = FontWeight.SemiBold,
-                  color = stat.domain.color
+                  color = info.domain.color
                 )
               }
 
-              // Visual proficiency bar
-              val progress = (stat.competenceLevel / 5f).coerceIn(0.1f, 1f)
               LinearProgressIndicator(
-                progress = { progress },
+                progress = { info.progressInTier.coerceIn(0.03f, 1f) },
                 modifier = Modifier
                   .fillMaxWidth()
                   .height(8.dp)
                   .clip(RoundedCornerShape(4.dp)),
-                color = stat.domain.color,
+                color = info.domain.color,
                 trackColor = MaterialTheme.colorScheme.surfaceVariant
               )
             }
           }
-        }
-      }
-    }
-
-    // Achievements Section ("Logros")
-    item {
-      Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-      ) {
-        Text(
-          text = "Logros",
-          style = MaterialTheme.typography.titleLarge,
-          fontWeight = FontWeight.Bold
-        )
-        Surface(
-          shape = RoundedCornerShape(12.dp),
-          color = Color(0xFFFEF3C7)
-        ) {
-          Text(
-            text = "$unlockedCount de 12",
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.Bold,
-            color = Color(0xFFB45309),
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-          )
-        }
-      }
-    }
-
-    // Grid of achievements
-    val chunkedAchievements = achievements.chunked(2)
-    items(chunkedAchievements) { rowItems ->
-      Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
-      ) {
-        rowItems.forEach { item ->
-          Card(
-            modifier = Modifier
-              .weight(1f)
-              .heightIn(min = 120.dp),
-            shape = RoundedCornerShape(18.dp),
-            colors = CardDefaults.cardColors(
-              containerColor = if (item.isUnlocked) Color(0xFFFFFBEB) else MaterialTheme.colorScheme.surface
-            ),
-            border = androidx.compose.foundation.BorderStroke(
-              1.dp,
-              if (item.isUnlocked) Color(0xFFFBBF24) else MaterialTheme.colorScheme.surfaceVariant
-            )
-          ) {
-            Column(
-              modifier = Modifier.padding(12.dp),
-              verticalArrangement = Arrangement.SpaceBetween
-            ) {
-              Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-              ) {
-                Text(text = item.iconEmoji, fontSize = 24.sp)
-                if (item.isUnlocked) {
-                  Icon(
-                    imageVector = Icons.Default.CheckCircle,
-                    contentDescription = "Desbloqueado",
-                    tint = Color(0xFFD97706),
-                    modifier = Modifier.size(18.dp)
-                  )
-                } else {
-                  Text(text = "🔒", fontSize = 16.sp)
-                }
-              }
-
-              Spacer(modifier = Modifier.height(8.dp))
-
-              Text(
-                text = item.title,
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.Bold,
-                color = if (item.isUnlocked) Color(0xFF92400E) else MaterialTheme.colorScheme.onSurface
-              )
-
-              Text(
-                text = item.description,
-                style = MaterialTheme.typography.bodySmall,
-                color = if (item.isUnlocked) Color(0xFFB45309) else MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-              )
-            }
-          }
-        }
-        if (rowItems.size == 1) {
-          Spacer(modifier = Modifier.weight(1f))
         }
       }
     }

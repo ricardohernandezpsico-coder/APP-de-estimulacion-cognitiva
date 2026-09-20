@@ -55,6 +55,7 @@ data class ChipTrial(
 fun CambioChipGame(
   level: Int,
   timed: Boolean,
+  intensity: Int = 0,
   onFinish: (score: Int, correct: Int, total: Int) -> Unit,
   onQuit: () -> Unit
 ) {
@@ -62,6 +63,17 @@ fun CambioChipGame(
   var currentRound by remember { mutableStateOf(1) }
   var correctCount by remember { mutableStateOf(0) }
   var scorePoints by remember { mutableStateOf(0) }
+  var currentStreak by remember { mutableStateOf(0) }
+
+  // Antes el nivel no influía en NADA acá — la regla siempre cambiaba cada 3
+  // rondas fijo. Ahora cambia más seguido cuanto más alto el nivel, y desde
+  // nivel 5 `intensity` agrega cambios sorpresa fuera del patrón regular, para
+  // que memorizar "cada 3 rondas cambia" deje de servir.
+  val switchInterval = (5 - level).coerceIn(2, 4)
+  // DDA: encadenar aciertos EN ESTA PARTIDA suma probabilidad de cambio
+  // sorpresa por encima de lo que da `intensity` sola — se enfría solo apenas
+  // se falla una (currentStreak vuelve a 0).
+  val surpriseSwitchChance = ((intensity + currentStreak) * 0.03f).coerceAtMost(0.5f)
 
   var activeRule by remember { mutableStateOf(ChipRule.DIRECCION) }
   var currentTrial by remember { mutableStateOf(generateTrial(activeRule)) }
@@ -79,9 +91,11 @@ fun CambioChipGame(
 
     if (isCorrect) {
       correctCount++
+      currentStreak++
       scorePoints += 10
       flashSuccess = true
     } else {
+      currentStreak = 0
       flashSuccess = false
     }
     showFlash = true
@@ -96,8 +110,9 @@ fun CambioChipGame(
         onFinish(finalScore, correctCount, totalTrials)
       } else {
         currentRound++
-        // Switch rule every 3-4 trials
-        if (currentRound % 3 == 0) {
+        val forcedSwitch = currentRound % switchInterval == 0
+        val surpriseSwitch = !forcedSwitch && Random.nextFloat() < surpriseSwitchChance
+        if (forcedSwitch || surpriseSwitch) {
           activeRule = if (activeRule == ChipRule.DIRECCION) ChipRule.POSICION else ChipRule.DIRECCION
           showRuleChangeBanner = true
           delay(800)

@@ -38,6 +38,7 @@ data class ComparisonTrial(
 fun ComparacionGame(
   level: Int,
   timed: Boolean,
+  intensity: Int = 0,
   onFinish: (score: Int, correct: Int, total: Int) -> Unit,
   onQuit: () -> Unit
 ) {
@@ -46,7 +47,10 @@ fun ComparacionGame(
   var correctCount by remember { mutableStateOf(0) }
   var scorePoints by remember { mutableStateOf(0) }
 
-  var currentTrial by remember { mutableStateOf(generateTrial(level)) }
+  var currentTrial by remember { mutableStateOf(generateTrial(level, intensity)) }
+  // El bono de velocidad exigía <900ms sin importar el nivel; ahora la ventana
+  // se acorta con la maestría (piso 500ms) para seguir premiando ser más rápido.
+  val speedBonusMs = (900 - intensity * 15).coerceAtLeast(500)
   var selectedSide by remember { mutableStateOf<String?>(null) }
   var trialStartTime by remember { mutableStateOf(System.currentTimeMillis()) }
 
@@ -66,7 +70,7 @@ fun ComparacionGame(
 
     if (isCorrect) {
       correctCount++
-      val speedBonus = if (reactionMs < 900) 5 else 0
+      val speedBonus = if (reactionMs < speedBonusMs) 5 else 0
       scorePoints += (10 + speedBonus)
       flashSuccess = true
     } else {
@@ -84,7 +88,7 @@ fun ComparacionGame(
         onFinish(finalScore, correctCount, totalTrials)
       } else {
         currentRound++
-        currentTrial = generateTrial(level)
+        currentTrial = generateTrial(level, intensity)
         selectedSide = null
       }
     }
@@ -226,7 +230,7 @@ private fun DotsGrid(count: Int) {
   }
 }
 
-private fun generateTrial(level: Int): ComparisonTrial {
+private fun generateTrial(level: Int, intensity: Int = 0): ComparisonTrial {
   if (level == 1) {
     // Dot patterns
     val v1 = Random.nextInt(4, 13)
@@ -248,11 +252,15 @@ private fun generateTrial(level: Int): ComparisonTrial {
       right = ComparisonSide(v2.toString(), v2)
     )
   } else {
-    // Simple expression vs number
-    val a = Random.nextInt(4, 9)
-    val b = Random.nextInt(4, 9)
+    // Simple expression vs number. Antes nivel 3, 4 y 5 eran idénticos; ahora
+    // `boost` sigue subiendo los productos y acercando los valores (más difícil
+    // de distinguir a simple vista) sin límite más allá de nivel 5.
+    val boost = (level - 3) + intensity / 5
+    val a = Random.nextInt(4 + boost / 2, 9 + boost)
+    val b = Random.nextInt(4 + boost / 2, 9 + boost)
     val prod = a * b
-    val compareVal = prod + Random.nextInt(-6, 7)
+    val closeness = (6 - intensity / 6).coerceAtLeast(2)
+    val compareVal = prod + Random.nextInt(-closeness, closeness + 1)
     val leftIsExpr = Random.nextBoolean()
 
     return if (leftIsExpr) {

@@ -36,23 +36,29 @@ data class MemoryCard(
 fun ParejasGame(
   level: Int,
   timed: Boolean,
+  intensity: Int = 0,
   onFinish: (score: Int, correct: Int, total: Int) -> Unit,
   onQuit: () -> Unit
 ) {
+  // Más allá de nivel 5 (Experto), intensity sigue sumando pares — hasta 12 (24
+  // cartas, grid 4x6), tope razonable para que siga entrando en pantalla.
   val pairCount = when (level) {
     1 -> 4 // 8 cards (2x4)
     2 -> 6 // 12 cards (3x4)
-    else -> 8 // 16 cards (4x4)
+    else -> (8 + intensity / 4).coerceAtMost(12)
   }
+  // Tiempo de memorización: baja de 3s a un piso de 1.5s con la maestría, para que
+  // "ya me las sé de memoria" también implique memorizar más rápido, no solo más.
+  val memorizeSeconds = (3 - intensity / 6).coerceAtLeast(1)
 
-  val symbols = listOf("🐶", "🐱", "🦊", "🐼", "🦁", "🐵", "🦄", "🦉", "🐸", "🐙", "🦋", "🐬")
+  val symbols = listOf("🐶", "🐱", "🦊", "🐼", "🦁", "🐵", "🦄", "🦉", "🐸", "🐙", "🦋", "🐬", "🐧", "🦒")
 
   var cards by remember {
     mutableStateOf(generateCardDeck(pairCount, symbols))
   }
 
   var isMemorizingPhase by remember { mutableStateOf(true) }
-  var memorizeSecondsLeft by remember { mutableStateOf(3) }
+  var memorizeSecondsLeft by remember { mutableStateOf(memorizeSeconds) }
   var attemptsCount by remember { mutableStateOf(0) }
   var matchedPairs by remember { mutableStateOf(0) }
   var selectedFirstIndex by remember { mutableStateOf<Int?>(null) }

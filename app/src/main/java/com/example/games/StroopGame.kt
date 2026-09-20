@@ -23,11 +23,17 @@ import com.example.ui.theme.EmeraldAccent
 import kotlinx.coroutines.delay
 import kotlin.random.Random
 
+enum class StroopRule { INK, WORD }
+
 data class StroopItem(
   val textName: String,
   val inkName: String,
-  val inkColor: Color
-)
+  val inkColor: Color,
+  val rule: StroopRule
+) {
+  /** La respuesta correcta depende de la regla activa en este ensayo, no siempre la tinta. */
+  val correctAnswer: String get() = if (rule == StroopRule.INK) inkName else textName
+}
 
 val StroopPalette = listOf(
   Pair("ROJO", Color(0xFFDC2626)),
@@ -37,10 +43,33 @@ val StroopPalette = listOf(
   Pair("MORADO", Color(0xFF9333EA))
 )
 
+/**
+ * Tiempo base por nivel: baja de forma continua, no solo entre 5 escalones.
+ * `intensity` seguirá recortándolo sin límite una vez alcanzado nivel 5 (Experto),
+ * para que un usuario que domina el juego nunca deje de sentir presión de tiempo.
+ */
+private fun baseTimeForLevel(level: Int, intensity: Int): Int {
+  val byLevel = when (level) { 1 -> 10; 2 -> 9; 3 -> 8; 4 -> 7; else -> 6 }
+  val fromMastery = intensity / 3 // cada 3 rondas de maestría, 1s menos
+  return (byLevel - fromMastery).coerceAtLeast(3)
+}
+
+/**
+ * Probabilidad de que la regla se invierta en este ensayo (responder según la
+ * PALABRA en vez de la tinta). En niveles 1-3 nunca cambia — ya es bastante
+ * pedirle al cerebro que ignore la palabra. Desde nivel 4 empieza a variar sin
+ * aviso (como Cambio de Chip), y la maestría sigue subiendo la probabilidad.
+ */
+private fun ruleFlipChance(level: Int, intensity: Int): Float = when {
+  level < 4 -> 0f
+  else -> (0.25f + intensity * 0.02f).coerceAtMost(0.5f)
+}
+
 @Composable
 fun StroopGame(
   level: Int,
   timed: Boolean,
+  intensity: Int = 0,
   onFinish: (score: Int, correct: Int, total: Int) -> Unit,
   onQuit: () -> Unit
 ) {
@@ -49,7 +78,7 @@ fun StroopGame(
   var correctCount by remember { mutableStateOf(0) }
   var scorePoints by remember { mutableStateOf(0) }
 
-  var currentTrial by remember { mutableStateOf(generateStroopTrial(level)) }
+  var currentTrial by remember { mutableStateOf(generateStroopTrial(level, intensity)) }
   var selectedChoice by remember { mutableStateOf<String?>(null) }
   var showFeedbackFlash by remember { mutableStateOf(false) }
   var flashSuccess by remember { mutableStateOf(true) }
@@ -57,12 +86,13 @@ fun StroopGame(
   // Fixed order of buttons so they are 100% stable during the game session
   val stableColors = remember { StroopPalette }
 
-  var timeLeft by remember { mutableStateOf(if (timed) 8 else null) }
+  val baseTime = remember(level, intensity) { baseTimeForLevel(level, intensity) }
+  var timeLeft by remember { mutableStateOf(if (timed) baseTime else null) }
 
   fun handleChoice(choice: String) {
     if (selectedChoice != null) return
     selectedChoice = choice
-    val isCorrect = choice == currentTrial.inkName
+    val isCorrect = choice == currentTrial.correctAnswer
 
     if (isCorrect) {
       correctCount++
@@ -76,7 +106,7 @@ fun StroopGame(
 
   LaunchedEffect(currentRound, timed) {
     if (timed) {
-      timeLeft = 8
+      timeLeft = baseTime
       while (timeLeft != null && timeLeft!! > 0) {
         delay(1000)
         timeLeft = timeLeft!! - 1
@@ -96,7 +126,7 @@ fun StroopGame(
         onFinish(finalScore, correctCount, totalTrials)
       } else {
         currentRound++
-        currentTrial = generateStroopTrial(level)
+        currentTrial = generateStroopTrial(level, intensity)
         selectedChoice = null
       }
     }
@@ -124,10 +154,10 @@ fun StroopGame(
       Spacer(modifier = Modifier.height(16.dp))
 
       Text(
-        text = "Selecciona el COLOR DE LA TINTA",
+        text = if (currentTrial.rule == StroopRule.INK) "Selecciona el COLOR DE LA TINTA" else "Selecciona LO QUE DICE LA PALABRA",
         style = MaterialTheme.typography.labelLarge,
         fontWeight = FontWeight.Bold,
-        color = MaterialTheme.colorScheme.onSurfaceVariant
+        color = if (currentTrial.rule == StroopRule.INK) MaterialTheme.colorScheme.onSurfaceVariant else EmeraldAccent
       )
 
       Spacer(modifier = Modifier.weight(0.4f))
@@ -175,7 +205,7 @@ fun StroopGame(
               name = name,
               color = color,
               isSelected = selectedChoice == name,
-              isCorrect = selectedChoice != null && name == currentTrial.inkName,
+              isCorrect = selectedChoice != null && name == currentTrial.correctAnswer,
               isEnabled = selectedChoice == null,
               onClick = { handleChoice(name) },
               modifier = Modifier.weight(1f)
@@ -192,7 +222,7 @@ fun StroopGame(
               name = name,
               color = color,
               isSelected = selectedChoice == name,
-              isCorrect = selectedChoice != null && name == currentTrial.inkName,
+              isCorrect = selectedChoice != null && name == currentTrial.correctAnswer,
               isEnabled = selectedChoice == null,
               onClick = { handleChoice(name) },
               modifier = Modifier.weight(1f)
@@ -251,7 +281,7 @@ private fun StroopColorButton(
   }
 }
 
-private fun generateStroopTrial(level: Int): StroopItem {
+private fun generateStroopTrial(level: Int, intensity: Int = 0): StroopItem {
   val names = StroopPalette.map { it.first }
   val textName = names.random()
   // At level 1, occasionally match, at higher levels almost always incongruent
@@ -260,5 +290,6 @@ private fun generateStroopTrial(level: Int): StroopItem {
   } else {
     StroopPalette.random()
   }
-  return StroopItem(textName = textName, inkName = ink.first, inkColor = ink.second)
+  val rule = if (Random.nextFloat() < ruleFlipChance(level, intensity)) StroopRule.WORD else StroopRule.INK
+  return StroopItem(textName = textName, inkName = ink.first, inkColor = ink.second, rule = rule)
 }

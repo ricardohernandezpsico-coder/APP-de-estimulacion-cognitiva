@@ -22,8 +22,9 @@ class NeuroVidaRepository(
   private val gameResultDao = database.gameResultDao()
   private val gameProgressDao = database.gameProgressDao()
   private val dailySessionDao = database.dailySessionDao()
-  private val achievementDao = database.achievementDao()
   private val userProfileDao = database.userProfileDao()
+  private val domainMasteryDao = database.domainMasteryDao()
+  private val claimedWeeklyChallengeDao = database.claimedWeeklyChallengeDao()
 
   private fun getTodayDateKey(): String = synchronized(dateFormat) {
     dateFormat.format(Date())
@@ -73,14 +74,87 @@ class NeuroVidaRepository(
       initialValue = GameRegistry.allGames.associate { it.id to 1 }
     )
 
-  // 4. Reactive Unlocked Achievements Set from Room
-  val unlockedAchievements: StateFlow<Set<String>> = achievementDao.getAllUnlocked()
-    .map { list -> list.map { it.id }.toSet() }
+  // 3b. Reactive Mastery Streak Map from Room — progresión sin techo más allá de nivel 5
+  // (ver comentario en GameProgressEntity.masteryStreak).
+  val gameIntensity: StateFlow<Map<String, Int>> = gameProgressDao.getAllProgress()
+    .map { list ->
+      val map = mutableMapOf<String, Int>()
+      GameRegistry.allGames.forEach { g -> map[g.id] = 0 }
+      list.forEach { p -> map[p.gameId] = p.masteryStreak }
+      map
+    }
     .stateIn(
       scope = repositoryScope,
       started = SharingStarted.Eagerly,
-      initialValue = emptySet()
+      initialValue = GameRegistry.allGames.associate { it.id to 0 }
     )
+
+  // 4b. Reactive Domain Mastery XP Map from Room — meta-progresión sin techo,
+  // ver DomainMasteryInfo/MasteryTier en Models.kt.
+  val domainMastery: StateFlow<Map<DomainType, Int>> = domainMasteryDao.getAll()
+    .map { list ->
+      val map = DomainType.values().associateWith { 0 }.toMutableMap()
+      list.forEach { e -> runCatching { DomainType.valueOf(e.domain) }.getOrNull()?.let { map[it] = e.xp } }
+      map
+    }
+    .stateIn(
+      scope = repositoryScope,
+      started = SharingStarted.Eagerly,
+      initialValue = DomainType.values().associateWith { 0 }
+    )
+
+  // 4c. Desafíos semanales: progreso derivado EN VIVO del historial de esta
+  // semana (no se persiste un contador aparte) + qué se reclamó ya (para no
+  // volver a otorgar el premio si se recalcula).
+  private val _claimedChallenges = MutableStateFlow<Set<String>>(emptySet())
+
+  val weeklyChallengeProgress: StateFlow<List<WeeklyChallengeProgress>> =
+    combine(gameHistory, _claimedChallenges) { history, claimed ->
+      computeWeeklyProgress(history, claimed, getWeekKey())
+    }.stateIn(
+      scope = repositoryScope,
+      started = SharingStarted.Eagerly,
+      initialValue = WeeklyChallengeRegistry.all.map { WeeklyChallengeProgress(it, 0, false) }
+    )
+
+  private fun getWeekKey(timestamp: Long = System.currentTimeMillis()): String {
+    val cal = Calendar.getInstance()
+    cal.timeInMillis = timestamp
+    cal.firstDayOfWeek = Calendar.MONDAY
+    cal.minimalDaysInFirstWeek = 4
+    return "${cal.get(Calendar.YEAR)}-W${cal.get(Calendar.WEEK_OF_YEAR)}"
+  }
+
+  private fun startOfWeekMillis(): Long {
+    val cal = Calendar.getInstance()
+    cal.firstDayOfWeek = Calendar.MONDAY
+    cal.set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
+    cal.set(Calendar.HOUR_OF_DAY, 0)
+    cal.set(Calendar.MINUTE, 0)
+    cal.set(Calendar.SECOND, 0)
+    cal.set(Calendar.MILLISECOND, 0)
+    return cal.timeInMillis
+  }
+
+  private fun computeWeeklyProgress(
+    history: List<GamePlayResult>,
+    claimedKeys: Set<String>,
+    weekKey: String
+  ): List<WeeklyChallengeProgress> {
+    val startOfWeek = startOfWeekMillis()
+    val thisWeek = history.filter { it.timestamp >= startOfWeek }
+    return WeeklyChallengeRegistry.all.map { def ->
+      val progress = when (def.key) {
+        "dominios3" -> thisWeek.mapNotNull { GameRegistry.getById(it.gameId)?.domain }.toSet().size
+        "reto2" -> thisWeek.count { it.timed }
+        "precision3" -> thisWeek.count { it.score >= 85 }
+        "dias4" -> thisWeek.map { formatDate(it.timestamp) }.toSet().size
+        else -> 0
+      }
+      val claimed = "$weekKey|${def.key}" in claimedKeys
+      WeeklyChallengeProgress(def, progress.coerceAtMost(def.target), claimed)
+    }
+  }
 
   // 5. Reactive Daily Session State from Room
   private val _dailySession = MutableStateFlow(
@@ -146,7 +220,11 @@ class NeuroVidaRepository(
       gameProgressDao.insertAll(initialProgress)
     }
 
-    // 4. Daily Session in Room
+    // 4. Domain mastery: sin filas nuevas que crear (arranca en 0 para los 6,
+    // ya cubierto por el valor inicial del StateFlow). Solo cargamos lo reclamado.
+    _claimedChallenges.value = claimedWeeklyChallengeDao.getAllClaimedSync().toSet()
+
+    // 5. Daily Session in Room
     val today = getTodayDateKey()
     val session = dailySessionDao.getDailySessionSync(today)
     if (session == null) {
@@ -301,20 +379,35 @@ class NeuroVidaRepository(
 
     val playedLevel = result.level
     var newLevel = playedLevel
+    var newMastery = currentProgress.masteryStreak
     var didLevelUp = false
     if (isAdaptive) {
       if (result.score >= 85) {
         if (playedLevel < 5) {
           newLevel = playedLevel + 1
           didLevelUp = true
+        } else {
+          // Ya está en el techo de nivel (Experto): seguir rindiendo bien seguirá
+          // endureciendo el juego (tiempos, rangos) vía masteryStreak, que no tiene
+          // límite superior. didLevelUp se marca igual para celebrar el avance en la UI.
+          newMastery += 1
+          didLevelUp = true
         }
       } else if (result.score <= 45 && playedLevel > 1) {
-        newLevel = playedLevel - 1
+        if (playedLevel == 5 && newMastery > 0) {
+          // Colchón de gracia: antes de bajar de Experto, primero se consume la
+          // racha de maestría acumulada — un mal día no tira por la borda meses
+          // de progreso más allá del nivel 5.
+          newMastery = (newMastery - 2).coerceAtLeast(0)
+        } else {
+          newLevel = playedLevel - 1
+        }
       }
     }
 
     val updatedProgress = currentProgress.copy(
       currentLevel = newLevel,
+      masteryStreak = newMastery,
       highestScore = maxOf(currentProgress.highestScore, result.score),
       totalGamesPlayed = currentProgress.totalGamesPlayed + 1,
       lastPlayedTimestamp = result.timestamp
@@ -338,69 +431,33 @@ class NeuroVidaRepository(
       }
     }
 
-    // 4. Check & Unlock Achievements in Room
     val allResults = gameResultDao.getAllResultsSync().map { it.toDomain() }
-    val allProgress = gameProgressDao.getAllProgressSync().associate { it.gameId to it.currentLevel }
-    checkAchievements(allResults, allProgress)
+
+    // 4. Maestría por dominio (etapa 4): XP sin techo por CUALQUIER partida del
+    // dominio, no solo cuando el juego individual mejora de nivel.
+    val gameDef = GameRegistry.getById(result.gameId)
+    if (gameDef != null) {
+      val xpGained = (result.score / 5).coerceAtLeast(1)
+      awardDomainXp(gameDef.domain, xpGained)
+    }
+
+    // 5. Desafíos semanales: revisa si alguno se completó recién con esta
+    // partida y, si no se había reclamado ya, otorga el bono una sola vez.
+    val weekKey = getWeekKey()
+    val progressNow = computeWeeklyProgress(allResults, _claimedChallenges.value, weekKey)
+    progressNow.filter { it.isComplete && !it.claimed }.forEach { wp ->
+      val claimId = "$weekKey|${wp.def.key}"
+      claimedWeeklyChallengeDao.insert(ClaimedWeeklyChallengeEntity(claimId))
+      DomainType.values().forEach { d -> awardDomainXp(d, WeeklyChallengeRegistry.XP_REWARD_PER_DOMAIN) }
+      _claimedChallenges.value = _claimedChallenges.value + claimId
+    }
 
     didLevelUp
   }
 
-  private suspend fun checkAchievements(history: List<GamePlayResult>, levels: Map<String, Int>) {
-    val unlocked = achievementDao.getAllUnlockedSync().map { it.id }.toSet()
-    val newlyUnlocked = mutableListOf<String>()
-
-    if (history.isNotEmpty() && !unlocked.contains("primera")) {
-      newlyUnlocked.add("primera")
-    }
-
-    val uniqueDomains = history.mapNotNull { GameRegistry.getById(it.gameId)?.domain }.toSet()
-    if (uniqueDomains.size >= 3 && !unlocked.contains("dominios")) {
-      newlyUnlocked.add("dominios")
-    }
-
-    val uniqueGames = history.map { it.gameId }.toSet()
-    if (uniqueGames.size >= 9 && !unlocked.contains("coleccionista")) {
-      newlyUnlocked.add("coleccionista")
-    }
-
-    val streak = calculateStreak(history)
-    if (streak >= 3 && !unlocked.contains("racha3")) {
-      newlyUnlocked.add("racha3")
-    }
-    if (streak >= 7 && !unlocked.contains("racha7")) {
-      newlyUnlocked.add("racha7")
-    }
-
-    if (history.any { it.score >= 85 } && !unlocked.contains("puntaje85")) {
-      newlyUnlocked.add("puntaje85")
-    }
-    if (history.any { it.score >= 100 } && !unlocked.contains("perfeccion")) {
-      newlyUnlocked.add("perfeccion")
-    }
-
-    if (levels.values.any { it >= 3 } && !unlocked.contains("nivel3")) {
-      newlyUnlocked.add("nivel3")
-    }
-    if (levels.values.any { it >= 5 } && !unlocked.contains("nivel5")) {
-      newlyUnlocked.add("nivel5")
-    }
-
-    if (history.size >= 10 && !unlocked.contains("sesiones10")) {
-      newlyUnlocked.add("sesiones10")
-    }
-    if (history.size >= 50 && !unlocked.contains("sesiones50")) {
-      newlyUnlocked.add("sesiones50")
-    }
-
-    val sessionsThisWeek = getSessionsThisWeek(history)
-    if (sessionsThisWeek >= userSettings.value.weeklyGoal && !unlocked.contains("meta_semanal")) {
-      newlyUnlocked.add("meta_semanal")
-    }
-
-    if (newlyUnlocked.isNotEmpty()) {
-      achievementDao.insertAll(newlyUnlocked.map { AchievementEntity(id = it) })
-    }
+  private suspend fun awardDomainXp(domain: DomainType, amount: Int) {
+    val current = domainMasteryDao.getForDomain(domain.name)?.xp ?: 0
+    domainMasteryDao.insertOrUpdate(DomainMasteryEntity(domain = domain.name, xp = current + amount))
   }
 
   fun calculateStreak(history: List<GamePlayResult>): Int {
@@ -464,30 +521,14 @@ class NeuroVidaRepository(
     return days
   }
 
-  fun getAllAchievements(): List<AchievementItem> {
-    val unlocked = unlockedAchievements.value
-    return listOf(
-      AchievementItem("primera", "Primer Paso", "Completa tu primera sesión de entrenamiento", "🌱", unlocked.contains("primera")),
-      AchievementItem("dominios", "Mente Integral", "Entrena en al menos 3 dominios cognitivos distintos", "🧩", unlocked.contains("dominios")),
-      AchievementItem("coleccionista", "Polímata", "Juega a los 9 juegos de la plataforma", "👑", unlocked.contains("coleccionista")),
-      AchievementItem("racha3", "Constancia Activa", "Entrena durante 3 días consecutivos", "🔥", unlocked.contains("racha3")),
-      AchievementItem("racha7", "Hábito de Hierro", "Alcanza una racha de 7 días consecutivos", "⚡", unlocked.contains("racha7")),
-      AchievementItem("puntaje85", "Agudeza Mental", "Logra 85 puntos o más en cualquier juego", "🎯", unlocked.contains("puntaje85")),
-      AchievementItem("perfeccion", "Perfección Serena", "Obtén un puntaje perfecto de 100 puntos", "✨", unlocked.contains("perfeccion")),
-      AchievementItem("nivel3", "Mente Avanzada", "Sube al nivel 3 en cualquier juego", "🚀", unlocked.contains("nivel3")),
-      AchievementItem("nivel5", "Gran Maestro", "Alcanza el nivel 5 (Experto) en un juego", "🏆", unlocked.contains("nivel5")),
-      AchievementItem("sesiones10", "Dedicación", "Completa 10 sesiones de entrenamiento", "📚", unlocked.contains("sesiones10")),
-      AchievementItem("sesiones50", "Centinela Cognitivo", "Completa 50 sesiones de entrenamiento", "🛡️", unlocked.contains("sesiones50")),
-      AchievementItem("meta_semanal", "Misión Cumplida", "Alcanza tu objetivo semanal de entrenamiento", "🏅", unlocked.contains("meta_semanal"))
-    )
-  }
-
   suspend fun resetData() = withContext(Dispatchers.IO) {
     gameResultDao.deleteAll()
     gameProgressDao.deleteAll()
     dailySessionDao.deleteAll()
-    achievementDao.deleteAll()
     userProfileDao.deleteAll()
+    domainMasteryDao.deleteAll()
+    claimedWeeklyChallengeDao.deleteAll()
+    _claimedChallenges.value = emptySet()
     initializeDatabaseDefaults()
   }
 }

@@ -1,6 +1,5 @@
 package com.example.ui.screens
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -11,8 +10,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Whatshot
@@ -54,7 +51,7 @@ fun HomeScreen(
   val history by viewModel.gameHistory.collectAsState()
   val sessionsSparkline by viewModel.sessionsSparkline.collectAsState()
   val scoresSparkline by viewModel.scoresSparkline.collectAsState()
-  val newAchievement by viewModel.newAchievementUnlocked.collectAsState()
+  val weeklyChallenges by viewModel.weeklyChallengeProgress.collectAsState()
 
   LazyColumn(
     modifier = modifier
@@ -64,44 +61,6 @@ fun HomeScreen(
     contentPadding = PaddingValues(top = 16.dp, bottom = 96.dp),
     verticalArrangement = Arrangement.spacedBy(18.dp)
   ) {
-    // Achievement Toast if newly unlocked
-    item {
-      AnimatedVisibility(visible = newAchievement != null) {
-        newAchievement?.let { ach ->
-          Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = Color(0xFFFEF3C7)),
-            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFF59E0B))
-          ) {
-            Row(
-              modifier = Modifier.padding(14.dp),
-              verticalAlignment = Alignment.CenterVertically
-            ) {
-              Text(text = "🏆", fontSize = 28.sp)
-              Spacer(modifier = Modifier.width(12.dp))
-              Column(modifier = Modifier.weight(1f)) {
-                Text(
-                  text = "¡Nuevo logro: ${ach.title}!",
-                  style = MaterialTheme.typography.titleSmall,
-                  fontWeight = FontWeight.Bold,
-                  color = Color(0xFF92400E)
-                )
-                Text(
-                  text = ach.description,
-                  style = MaterialTheme.typography.bodySmall,
-                  color = Color(0xFFB45309)
-                )
-              }
-              IconButton(onClick = { viewModel.dismissAchievementBanner() }) {
-                Icon(Icons.Default.Close, contentDescription = "Cerrar aviso", tint = Color(0xFF92400E))
-              }
-            }
-          }
-        }
-      }
-    }
-
     // Top greeting header
     item {
       Row(
@@ -300,6 +259,91 @@ fun HomeScreen(
                 color = TealPrimary,
                 fontWeight = FontWeight.Medium
               )
+            }
+          }
+        }
+      }
+    }
+
+    // Desafíos de la semana (etapa 4 de gamificación): fijos, no aleatorios,
+    // progreso calculado en vivo desde el historial — dan un motivo concreto
+    // para variar (jugar otro dominio, probar Reto) más allá de la racha diaria.
+    item {
+      Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+      ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+          ) {
+            Text(
+              text = "Desafíos de la semana",
+              style = MaterialTheme.typography.titleSmall,
+              fontWeight = FontWeight.Bold
+            )
+            val completedCount = weeklyChallenges.count { it.isComplete }
+            Surface(
+              shape = RoundedCornerShape(10.dp),
+              color = if (completedCount == weeklyChallenges.size && weeklyChallenges.isNotEmpty())
+                EmeraldAccent.copy(alpha = 0.15f) else MaterialTheme.colorScheme.surfaceVariant
+            ) {
+              Text(
+                text = "$completedCount/${weeklyChallenges.size}",
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold,
+                color = if (completedCount == weeklyChallenges.size && weeklyChallenges.isNotEmpty())
+                  EmeraldAccent else MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+              )
+            }
+          }
+
+          Spacer(modifier = Modifier.height(12.dp))
+
+          weeklyChallenges.forEachIndexed { idx, wc ->
+            if (idx > 0) Spacer(modifier = Modifier.height(10.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+              Text(text = wc.def.iconEmoji, fontSize = 18.sp)
+              Spacer(modifier = Modifier.width(10.dp))
+              Column(modifier = Modifier.weight(1f)) {
+                Text(
+                  text = wc.def.title,
+                  style = MaterialTheme.typography.labelMedium,
+                  fontWeight = FontWeight.SemiBold,
+                  color = if (wc.isComplete) EmeraldAccent else MaterialTheme.colorScheme.onSurface
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                LinearProgressIndicator(
+                  progress = { (wc.progress.toFloat() / wc.def.target).coerceIn(0f, 1f) },
+                  modifier = Modifier
+                    .fillMaxWidth()
+                    .height(6.dp)
+                    .clip(RoundedCornerShape(3.dp)),
+                  color = if (wc.isComplete) EmeraldAccent else TealPrimary,
+                  trackColor = MaterialTheme.colorScheme.surfaceVariant
+                )
+              }
+              Spacer(modifier = Modifier.width(10.dp))
+              if (wc.isComplete) {
+                Icon(
+                  imageVector = Icons.Outlined.CheckCircle,
+                  contentDescription = "Completado",
+                  tint = EmeraldAccent,
+                  modifier = Modifier.size(18.dp)
+                )
+              } else {
+                Text(
+                  text = "${wc.progress}/${wc.def.target}",
+                  style = MaterialTheme.typography.labelSmall,
+                  fontWeight = FontWeight.Bold,
+                  color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+              }
             }
           }
         }

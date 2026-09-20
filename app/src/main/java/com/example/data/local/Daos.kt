@@ -70,20 +70,32 @@ interface DailySessionDao {
 }
 
 @Dao
-interface AchievementDao {
-  @Query("SELECT * FROM unlocked_achievements")
-  fun getAllUnlocked(): Flow<List<AchievementEntity>>
+interface DomainMasteryDao {
+  @Query("SELECT * FROM domain_mastery")
+  fun getAll(): Flow<List<DomainMasteryEntity>>
 
-  @Query("SELECT * FROM unlocked_achievements")
-  suspend fun getAllUnlockedSync(): List<AchievementEntity>
+  @Query("SELECT * FROM domain_mastery")
+  suspend fun getAllSync(): List<DomainMasteryEntity>
+
+  @Query("SELECT * FROM domain_mastery WHERE domain = :domain")
+  suspend fun getForDomain(domain: String): DomainMasteryEntity?
 
   @Insert(onConflict = OnConflictStrategy.REPLACE)
-  suspend fun insert(achievement: AchievementEntity)
+  suspend fun insertOrUpdate(entity: DomainMasteryEntity)
+
+  @Query("DELETE FROM domain_mastery")
+  suspend fun deleteAll()
+}
+
+@Dao
+interface ClaimedWeeklyChallengeDao {
+  @Query("SELECT id FROM claimed_weekly_challenges")
+  suspend fun getAllClaimedSync(): List<String>
 
   @Insert(onConflict = OnConflictStrategy.REPLACE)
-  suspend fun insertAll(achievements: List<AchievementEntity>)
+  suspend fun insert(entity: ClaimedWeeklyChallengeEntity)
 
-  @Query("DELETE FROM unlocked_achievements")
+  @Query("DELETE FROM claimed_weekly_challenges")
   suspend fun deleteAll()
 }
 
