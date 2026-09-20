@@ -1,9 +1,10 @@
 # NeuroVida (Kotlin/Compose, nativa Android) — Memoria del proyecto (CLAUDE.md)
 
-App de estimulación cognitiva gratuita (español): 9 juegos en 6 dominios (memoria, atención,
+App de estimulación cognitiva gratuita: 9 juegos en 6 dominios (memoria, atención,
 razonamiento, lenguaje, cálculo, velocidad), dificultad adaptativa, sesión diaria, rachas, maestría
 por dominio, desafíos semanales, recordatorio (el sistema de logros se sacó por completo el 20-sep,
-ver "Remoción de Logros" más abajo). **Nativa Android: Kotlin + Jetpack Compose**, generada originalmente con Google AI
+ver "Remoción de Logros" más abajo). Interfaz en español con soporte parcial multi-idioma en
+progreso (ver "Internacionalización" más abajo). **Nativa Android: Kotlin + Jetpack Compose**, generada originalmente con Google AI
 Studio y subida a GitHub por Ricardo. Repo: `https://github.com/ricardohernandezpsico-coder/APP-de-estimulacion-cognitiva`.
 
 ## Historia — por qué esta carpeta y no `KIMI APPS/neurovida`
@@ -394,6 +395,35 @@ original de AI Studio. Se sacó; el título ahora se ve limpio.
 
 Build limpio (`./gradlew.bat assembleDebug`) e instalado/probado en el emulador sin crashes para
 los tres cambios.
+
+## Internacionalización (20-sep, hecha por Ricardo vía Google AI Studio, no en esta sesión)
+
+Mientras se trabajaba en el ranking ELO de acá, Ricardo implementó en paralelo (fuera de esta
+sesión, directo en AI Studio) un sistema de idiomas para la app — se detectó al hacer `git push` y
+encontrar 2 commits en el remoto que no existían localmente (`792a2da`, `68aea2a`). Se trajeron con
+`git pull --rebase`, sin conflictos.
+
+- `AppLanguage` (Models.kt): 5 idiomas — Español, English, Français, Deutsch, Português.
+- `ui/i18n/AppStrings.kt`: `Translations` data class + `LocalAppLanguage` (CompositionLocal) +
+  `strings` (`@Composable` getter que resuelve según el idioma activo).
+- `UserSettings.language` persistido en Room (`UserProfileEntity.language`, DB v8→v9).
+- Selector de idioma nuevo en Ajustes ("card_language_selector"), mismo patrón visual que el
+  selector de tema (chips).
+- **Cobertura parcial**: el `Translations` actual solo cubre las 4 pantallas principales (Hoy,
+  Biblioteca de Juegos, Progreso, Ajustes — tabs, títulos, algunos labels). Los 9 juegos,
+  `GameResultScreen` y varios diálogos/textos de Ajustes (dificultad, notificaciones, etc.) siguen
+  hardcodeados en español. Si se pide "traducir X" y X es un juego o un diálogo, hay que agregar
+  los campos correspondientes a `Translations` primero — no están todavía.
+
+**Regresión encontrada y arreglada**: el commit `68aea2a` (de AI Studio) borró `gradlew` y
+`gradlew.bat` del repo — probablemente porque el export/sync de AI Studio no sabe que existen (el
+mismo gap que hubo al clonar el repo la primera vez, ver "Cómo compilar y correr" arriba). Sin esos
+scripts el proyecto no compila fuera de Android Studio. Se regeneraron con
+`gradle wrapper --gradle-version 9.3.1` (Gradle standalone en
+`C:\Users\RURAL7\AppData\Local\Gradle\gradle-9.3.1`) y se verificó `assembleDebug` limpio antes de
+commitear. **Ojo a futuro**: si Ricardo sigue alternando entre AI Studio y este entorno, este
+archivo puede volver a desaparecer — revisar `ls gradlew gradlew.bat` después de traer cambios de
+AI Studio.
 
 ## Pendiente / por confirmar con Ricardo
 
