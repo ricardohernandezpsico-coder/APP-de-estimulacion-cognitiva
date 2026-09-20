@@ -35,6 +35,9 @@ import com.example.model.GameRegistry
 import com.example.ui.components.CircularProgressRing
 import com.example.ui.components.DomainChip
 import com.example.ui.components.Sparkline
+import com.example.ui.i18n.LocalAppLanguage
+import com.example.ui.i18n.getGameTitle
+import com.example.ui.i18n.strings
 import com.example.ui.theme.*
 import com.example.viewmodel.NeuroVidaViewModel
 
@@ -83,7 +86,7 @@ fun HomeScreen(
 
           Column {
             Text(
-              text = "Hola, ${userSettings.name} 👋",
+              text = strings.greeting(userSettings.name),
               style = MaterialTheme.typography.titleLarge,
               fontWeight = FontWeight.Black,
               color = MaterialTheme.colorScheme.onBackground
@@ -116,13 +119,13 @@ fun HomeScreen(
           ) {
             Icon(
               imageVector = Icons.Default.Whatshot,
-              contentDescription = "Racha",
+              contentDescription = strings.streakLabel,
               tint = if (streak > 0) Color(0xFFD97706) else MaterialTheme.colorScheme.onSurfaceVariant,
               modifier = Modifier.size(20.dp)
             )
             Spacer(modifier = Modifier.width(4.dp))
             Text(
-              text = "$streak ${if (streak == 1) "día" else "días"}",
+              text = "$streak ${if (streak == 1) strings.daySingle else strings.dayPlural}",
               style = MaterialTheme.typography.labelLarge,
               fontWeight = FontWeight.Bold,
               color = if (streak > 0) Color(0xFFB45309) else MaterialTheme.colorScheme.onSurfaceVariant
@@ -134,6 +137,7 @@ fun HomeScreen(
 
     // "Tu sesión de hoy" Main Card
     item {
+      val lang = LocalAppLanguage.current
       Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
@@ -152,16 +156,16 @@ fun HomeScreen(
           ) {
             Column(modifier = Modifier.weight(1f)) {
               Text(
-                text = "Tu sesión de hoy",
+                text = strings.dailySessionTitle,
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
               )
               Text(
                 text = when (dailySession.completedCount) {
-                  0 -> "3 juegos seleccionados según tus prioridades"
-                  in 1..2 -> "${dailySession.completedCount} de 3 completados. ¡Sigue así!"
-                  else -> "¡Excelente! Has completado tu rutina de hoy"
+                  0 -> strings.dailySessionDesc
+                  in 1..2 -> "${dailySession.completedCount}/3"
+                  else -> strings.sessionCompletedTitle
                 },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -199,7 +203,7 @@ fun HomeScreen(
                   Text(text = def?.iconEmoji ?: "🧠", fontSize = 20.sp)
                   Spacer(modifier = Modifier.height(2.dp))
                   Text(
-                    text = def?.title ?: "Juego",
+                    text = if (def != null) getGameTitle(def.id, lang, def.title) else "Juego",
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
@@ -223,16 +227,16 @@ fun HomeScreen(
             colors = ButtonDefaults.buttonColors(containerColor = TealPrimary)
           ) {
             Icon(
-              imageVector = if (dailySession.completedCount >= 3) Icons.Default.PlayArrow else Icons.Default.PlayArrow,
+              imageVector = Icons.Default.PlayArrow,
               contentDescription = null,
               modifier = Modifier.size(20.dp)
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
               text = when {
-                dailySession.completedCount == 0 -> "Empezar sesión"
-                dailySession.completedCount < 3 -> "Continuar sesión (${dailySession.completedCount + 1}/3)"
-                else -> "Entrenar otra ronda"
+                dailySession.completedCount == 0 -> strings.startDailySession
+                dailySession.completedCount < 3 -> strings.continueDailySession
+                else -> strings.startDailySession
               },
               style = MaterialTheme.typography.titleSmall,
               fontWeight = FontWeight.Bold
