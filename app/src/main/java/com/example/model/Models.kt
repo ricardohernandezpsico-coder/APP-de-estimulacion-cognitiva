@@ -293,5 +293,6 @@ data class UserSettings(
   val difficultyVelocidad: Int = 2,
   val cognitiveAssistance: Boolean = true,
   val timeScaleFactor: Float = 1.0f,
-  val themeMode: ThemeMode = ThemeMode.SYSTEM
+  val themeMode: ThemeMode = ThemeMode.SYSTEM,
+  val language: AppLanguage = AppLanguage.SPANISH
 )

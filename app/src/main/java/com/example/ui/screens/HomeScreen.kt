@@ -86,7 +86,7 @@ fun HomeScreen(
 
           Column {
             Text(
-              text = strings.greeting(userSettings.name),
+              text = strings.greetingFormat(userSettings.name),
               style = MaterialTheme.typography.titleLarge,
               fontWeight = FontWeight.Black,
               color = MaterialTheme.colorScheme.onBackground
@@ -236,7 +236,7 @@ fun HomeScreen(
               text = when {
                 dailySession.completedCount == 0 -> strings.startDailySession
                 dailySession.completedCount < 3 -> strings.continueDailySession
-                else -> strings.startDailySession
+                else -> strings.trainAnotherRound
               },
               style = MaterialTheme.typography.titleSmall,
               fontWeight = FontWeight.Bold

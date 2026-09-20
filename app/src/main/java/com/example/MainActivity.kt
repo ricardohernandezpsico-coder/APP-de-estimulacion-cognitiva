@@ -23,12 +23,15 @@ import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.SportsEsports
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.example.games.*
+import com.example.ui.i18n.LocalAppLanguage
+import com.example.ui.i18n.strings
 import com.example.ui.screens.GamesLibraryScreen
 import com.example.ui.screens.HomeScreen
 import com.example.ui.screens.ProgressScreen
@@ -52,8 +55,10 @@ class MainActivity : ComponentActivity() {
         ThemeMode.DARK -> true
         ThemeMode.SYSTEM -> isSystemInDarkTheme()
       }
-      NeuroVidaTheme(darkTheme = darkTheme) {
-        NeuroVidaApp(viewModel = viewModel)
+      CompositionLocalProvider(LocalAppLanguage provides userSettings.language) {
+        NeuroVidaTheme(darkTheme = darkTheme) {
+          NeuroVidaApp(viewModel = viewModel)
+        }
       }
     }
   }
@@ -94,16 +99,22 @@ fun NeuroVidaApp(viewModel: NeuroVidaViewModel) {
 
             tabs.forEach { (tab, filledIcon, outlinedIcon) ->
               val isSelected = currentTab == tab
+              val labelText = when (tab) {
+                AppTab.HOY -> strings.tabToday
+                AppTab.JUEGOS -> strings.tabGames
+                AppTab.PROGRESO -> strings.tabProgress
+                AppTab.AJUSTES -> strings.tabSettings
+              }
               NavigationBarItem(
                 selected = isSelected,
                 onClick = { viewModel.setTab(tab) },
                 icon = {
                   Icon(
                     imageVector = if (isSelected) filledIcon else outlinedIcon,
-                    contentDescription = tab.title
+                    contentDescription = labelText
                   )
                 },
-                label = { Text(text = tab.title) },
+                label = { Text(text = labelText) },
                 colors = NavigationBarItemDefaults.colors(
                   selectedIconColor = TealPrimary,
                   selectedTextColor = TealPrimary,

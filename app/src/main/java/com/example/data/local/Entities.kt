@@ -2,6 +2,7 @@ package com.example.data.local
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import com.example.model.AppLanguage
 import com.example.model.DailySessionState
 import com.example.model.DifficultyMode
 import com.example.model.GamePlayResult
@@ -118,7 +119,8 @@ data class UserProfileEntity(
   val difficultyVelocidad: Int = 2,
   val cognitiveAssistance: Boolean = true,
   val timeScaleFactor: Float = 1.0f,
-  val themeMode: String = "SYSTEM"
+  val themeMode: String = "SYSTEM",
+  val language: String = "es"
 )
 
 fun UserProfileEntity.toDomain(): UserSettings = UserSettings(
@@ -142,7 +144,8 @@ fun UserProfileEntity.toDomain(): UserSettings = UserSettings(
   difficultyVelocidad = difficultyVelocidad,
   cognitiveAssistance = cognitiveAssistance,
   timeScaleFactor = timeScaleFactor,
-  themeMode = runCatching { ThemeMode.valueOf(themeMode) }.getOrDefault(ThemeMode.SYSTEM)
+  themeMode = runCatching { ThemeMode.valueOf(themeMode) }.getOrDefault(ThemeMode.SYSTEM),
+  language = AppLanguage.fromCode(language)
 )
 
 fun UserSettings.toEntity(): UserProfileEntity = UserProfileEntity(
@@ -166,5 +169,6 @@ fun UserSettings.toEntity(): UserProfileEntity = UserProfileEntity(
   difficultyVelocidad = difficultyVelocidad,
   cognitiveAssistance = cognitiveAssistance,
   timeScaleFactor = timeScaleFactor,
-  themeMode = themeMode.name
+  themeMode = themeMode.name,
+  language = language.code
 )

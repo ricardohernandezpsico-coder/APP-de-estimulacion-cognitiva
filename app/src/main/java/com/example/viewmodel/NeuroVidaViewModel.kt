@@ -286,7 +286,8 @@ class NeuroVidaViewModel(application: Application) : AndroidViewModel(applicatio
     reminderMinute: Int = userSettings.value.reminderMinute,
     avatar: String = userSettings.value.avatar,
     difficultyMode: DifficultyMode = userSettings.value.difficultyMode,
-    themeMode: ThemeMode = userSettings.value.themeMode
+    themeMode: ThemeMode = userSettings.value.themeMode,
+    language: AppLanguage = userSettings.value.language
   ) {
     viewModelScope.launch {
       val current = userSettings.value
@@ -301,7 +302,8 @@ class NeuroVidaViewModel(application: Application) : AndroidViewModel(applicatio
         reminderHour = reminderHour,
         reminderMinute = reminderMinute,
         difficultyMode = difficultyMode,
-        themeMode = themeMode
+        themeMode = themeMode,
+        language = language
       )
       repository.updateSettings(updated)
 

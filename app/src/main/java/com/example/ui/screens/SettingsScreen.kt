@@ -29,10 +29,12 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.model.AppLanguage
 import com.example.model.DifficultyMode
 import com.example.model.DomainType
 import com.example.model.ThemeMode
 import com.example.model.UserSettings
+import com.example.ui.i18n.strings
 import com.example.ui.theme.EmeraldAccent
 import com.example.ui.theme.TealPrimary
 import com.example.viewmodel.NeuroVidaViewModel
@@ -66,6 +68,7 @@ fun SettingsScreen(
   var cognitiveAssistance by remember(userSettings.cognitiveAssistance) { mutableStateOf(userSettings.cognitiveAssistance) }
   var timeScaleFactor by remember(userSettings.timeScaleFactor) { mutableStateOf(userSettings.timeScaleFactor) }
   var themeMode by remember(userSettings.themeMode) { mutableStateOf(userSettings.themeMode) }
+  var appLanguage by remember(userSettings.language) { mutableStateOf(userSettings.language) }
 
   var showNewProfileDialog by remember { mutableStateOf(false) }
   var profileToDelete by remember { mutableStateOf<UserSettings?>(null) }
@@ -116,11 +119,84 @@ fun SettingsScreen(
     Spacer(modifier = Modifier.height(16.dp))
 
     Text(
-      text = "Ajustes y Preferencias",
+      text = strings.settingsTitle,
       style = MaterialTheme.typography.headlineMedium,
       fontWeight = FontWeight.Black,
       color = MaterialTheme.colorScheme.onBackground
     )
+
+    // Language Selection Card (Internationalization)
+    Card(
+      modifier = Modifier.fillMaxWidth().testTag("card_language_selector"),
+      shape = RoundedCornerShape(22.dp),
+      colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+    ) {
+      Column(
+        modifier = Modifier.padding(20.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
+      ) {
+        Row(
+          verticalAlignment = Alignment.CenterVertically,
+          horizontalArrangement = Arrangement.SpaceBetween,
+          modifier = Modifier.fillMaxWidth()
+        ) {
+          Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Default.Language, contentDescription = null, tint = TealPrimary)
+            Spacer(modifier = Modifier.width(10.dp))
+            Column {
+              Text(
+                text = strings.languageCardTitle,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+              )
+              Text(
+                text = strings.languageCardSubtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+              )
+            }
+          }
+        }
+
+        Row(
+          modifier = Modifier.fillMaxWidth(),
+          horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+          AppLanguage.entries.forEach { lang ->
+            val isSelected = appLanguage == lang
+            FilterChip(
+              selected = isSelected,
+              onClick = {
+                appLanguage = lang
+                viewModel.updateSettings(
+                  name = nameInput,
+                  weeklyGoal = weeklyGoal,
+                  defaultTimed = defaultTimed,
+                  sound = soundEnabled,
+                  haptics = hapticsEnabled,
+                  notificationsEnabled = notificationsEnabled,
+                  reminderHour = reminderHour,
+                  reminderMinute = reminderMinute,
+                  themeMode = themeMode,
+                  language = lang
+                )
+              },
+              label = {
+                Text(
+                  text = "${lang.flagEmoji} ${lang.displayName}",
+                  fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                )
+              },
+              colors = FilterChipDefaults.filterChipColors(
+                selectedContainerColor = TealPrimary.copy(alpha = 0.15f),
+                selectedLabelColor = TealPrimary
+              ),
+              modifier = Modifier.testTag("chip_lang_${lang.code}")
+            )
+          }
+        }
+      }
+    }
 
     // 1. User Profiles Management Card (Room Local Database)
     Card(

@@ -32,6 +32,10 @@ import com.example.model.GameRankInfo
 import com.example.model.GameRegistry
 import com.example.model.LevelTier
 import com.example.ui.components.DomainChip
+import com.example.ui.i18n.LocalAppLanguage
+import com.example.ui.i18n.getDomainName
+import com.example.ui.i18n.getGameTitle
+import com.example.ui.i18n.strings
 import com.example.ui.theme.*
 import com.example.viewmodel.NeuroVidaViewModel
 
@@ -61,6 +65,7 @@ fun GamesLibraryScreen(
       .fillMaxSize()
       .background(MaterialTheme.colorScheme.background)
   ) {
+    val currentLang = LocalAppLanguage.current
     LazyColumn(
       modifier = Modifier
         .fillMaxSize()
@@ -71,13 +76,13 @@ fun GamesLibraryScreen(
       item {
         Column {
           Text(
-            text = "Biblioteca de Juegos",
+            text = strings.gamesLibraryTitle,
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Black,
             color = MaterialTheme.colorScheme.onBackground
           )
           Text(
-            text = "9 entrenamientos en 6 dominios cognitivos",
+            text = strings.gamesLibrarySubtitle,
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
           )
@@ -94,7 +99,7 @@ fun GamesLibraryScreen(
             FilterChip(
               selected = selectedDomainFilter == null,
               onClick = { selectedDomainFilter = null },
-              label = { Text("Todos") },
+              label = { Text(strings.filterAll) },
               shape = RoundedCornerShape(14.dp),
               colors = FilterChipDefaults.filterChipColors(
                 selectedContainerColor = TealPrimary,
@@ -108,7 +113,7 @@ fun GamesLibraryScreen(
             FilterChip(
               selected = isSelected,
               onClick = { selectedDomainFilter = if (isSelected) null else domain },
-              label = { Text(domain.displayName) },
+              label = { Text(getDomainName(domain, currentLang)) },
               shape = RoundedCornerShape(14.dp),
               colors = FilterChipDefaults.filterChipColors(
                 selectedContainerColor = domain.color,
@@ -126,6 +131,7 @@ fun GamesLibraryScreen(
         val levelTier = LevelTier.fromLevel(level)
         val rankInfo = gameRanks.find { it.gameId == game.id } ?: GameRankInfo(game.id, 0)
         val bestScore = history.filter { it.gameId == game.id }.maxOfOrNull { it.score }
+        val localizedGameTitle = getGameTitle(game.id, currentLang, game.title)
 
         Card(
           modifier = Modifier
@@ -162,7 +168,7 @@ fun GamesLibraryScreen(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
               ) {
                 Text(
-                  text = game.title,
+                  text = localizedGameTitle,
                   style = MaterialTheme.typography.titleMedium,
                   fontWeight = FontWeight.Bold,
                   color = MaterialTheme.colorScheme.onSurface
@@ -189,7 +195,7 @@ fun GamesLibraryScreen(
                   color = game.domain.color.copy(alpha = 0.12f)
                 ) {
                   Text(
-                    text = "Nivel $level · ${levelTier.tierName}",
+                    text = "${strings.levelPrefix} $level · ${levelTier.tierName}",
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Bold,
                     color = game.domain.color,
@@ -213,7 +219,7 @@ fun GamesLibraryScreen(
 
               if (bestScore != null) {
                 Text(
-                  text = "Mejor: $bestScore",
+                  text = "${strings.scoreLabel}: $bestScore",
                   style = MaterialTheme.typography.labelSmall,
                   color = MaterialTheme.colorScheme.onSurfaceVariant,
                   modifier = Modifier.padding(top = 4.dp)
@@ -227,7 +233,7 @@ fun GamesLibraryScreen(
             ) {
               Icon(
                 imageVector = Icons.Default.PlayArrow,
-                contentDescription = "Jugar ${game.title}",
+                contentDescription = "${strings.playButton} $localizedGameTitle",
                 tint = game.domain.color,
                 modifier = Modifier.size(28.dp)
               )

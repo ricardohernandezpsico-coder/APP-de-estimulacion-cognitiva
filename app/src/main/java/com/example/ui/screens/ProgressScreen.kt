@@ -18,6 +18,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.model.GameRegistry
 import com.example.ui.components.DomainChip
+import com.example.ui.i18n.LocalAppLanguage
+import com.example.ui.i18n.getDomainName
+import com.example.ui.i18n.getGameTitle
+import com.example.ui.i18n.strings
 import com.example.ui.theme.*
 import com.example.viewmodel.NeuroVidaViewModel
 import java.text.SimpleDateFormat
@@ -34,6 +38,8 @@ fun ProgressScreen(
 
   val dateFormatter = remember { SimpleDateFormat("dd MMM, HH:mm", Locale.getDefault()) }
 
+  val currentLang = LocalAppLanguage.current
+
   LazyColumn(
     modifier = modifier
       .fillMaxSize()
@@ -46,13 +52,13 @@ fun ProgressScreen(
     item {
       Column {
         Text(
-          text = "Tu Progreso Cognitivo",
+          text = strings.progressTitle,
           style = MaterialTheme.typography.headlineMedium,
           fontWeight = FontWeight.Black,
           color = MaterialTheme.colorScheme.onBackground
         )
         Text(
-          text = "Evolución integral en las 6 áreas cognitivas",
+          text = strings.progressSubtitle,
           style = MaterialTheme.typography.bodyMedium,
           color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -84,12 +90,12 @@ fun ProgressScreen(
             verticalAlignment = Alignment.CenterVertically
           ) {
             Text(
-              text = "Maestría por Dominio",
+              text = strings.domainMasteryTitle,
               style = MaterialTheme.typography.titleMedium,
               fontWeight = FontWeight.Bold
             )
             Text(
-              text = "XP sin límite",
+              text = strings.xpLabel,
               style = MaterialTheme.typography.labelSmall,
               color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -114,7 +120,7 @@ fun ProgressScreen(
                   )
                   Spacer(modifier = Modifier.width(8.dp))
                   Text(
-                    text = info.domain.displayName,
+                    text = getDomainName(info.domain, currentLang),
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
@@ -163,12 +169,12 @@ fun ProgressScreen(
             verticalAlignment = Alignment.CenterVertically
           ) {
             Text(
-              text = "Ranking por Juego",
+              text = strings.gameRankingsTitle,
               style = MaterialTheme.typography.titleMedium,
               fontWeight = FontWeight.Bold
             )
             Text(
-              text = "Sube y baja según cómo juegues",
+              text = strings.gameRankingsSubtitle,
               style = MaterialTheme.typography.labelSmall,
               color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -176,6 +182,7 @@ fun ProgressScreen(
 
           gameRanks.forEach { rank ->
             val game = GameRegistry.getById(rank.gameId) ?: return@forEach
+            val localizedGameTitle = getGameTitle(game.id, currentLang, game.title)
             Row(
               modifier = Modifier.fillMaxWidth(),
               horizontalArrangement = Arrangement.SpaceBetween,
@@ -185,7 +192,7 @@ fun ProgressScreen(
                 Text(text = game.iconEmoji, fontSize = 18.sp)
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                  text = game.title,
+                  text = localizedGameTitle,
                   style = MaterialTheme.typography.labelLarge,
                   fontWeight = FontWeight.SemiBold,
                   color = MaterialTheme.colorScheme.onSurface
@@ -213,7 +220,7 @@ fun ProgressScreen(
     // Recent History
     item {
       Text(
-        text = "Historial Reciente",
+        text = strings.recentHistoryTitle,
         style = MaterialTheme.typography.titleLarge,
         fontWeight = FontWeight.Bold,
         modifier = Modifier.padding(top = 8.dp)
@@ -222,6 +229,7 @@ fun ProgressScreen(
 
     items(history.take(8)) { item ->
       val game = GameRegistry.getById(item.gameId)
+      val localizedGameTitle = if (game != null) getGameTitle(game.id, currentLang, game.title) else "Juego"
       Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -239,7 +247,7 @@ fun ProgressScreen(
 
           Column(modifier = Modifier.weight(1f)) {
             Text(
-              text = game?.title ?: "Juego",
+              text = localizedGameTitle,
               style = MaterialTheme.typography.titleSmall,
               fontWeight = FontWeight.Bold
             )
