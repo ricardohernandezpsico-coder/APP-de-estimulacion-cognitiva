@@ -29,6 +29,7 @@ fun ProgressScreen(
   modifier: Modifier = Modifier
 ) {
   val domainMastery by viewModel.domainMasteryInfo.collectAsState()
+  val gameRanks by viewModel.gameRanks.collectAsState()
   val history by viewModel.gameHistory.collectAsState()
 
   val dateFormatter = remember { SimpleDateFormat("dd MMM, HH:mm", Locale.getDefault()) }
@@ -137,6 +138,72 @@ fun ProgressScreen(
                 color = info.domain.color,
                 trackColor = MaterialTheme.colorScheme.surfaceVariant
               )
+            }
+          }
+        }
+      }
+    }
+
+    // Ranking ELO por juego (sube y baja con el desempeño, a diferencia de la
+    // Maestría por Dominio de arriba que solo crece — ver RankTier en Models.kt).
+    item {
+      Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+      ) {
+        Column(
+          modifier = Modifier.padding(20.dp),
+          verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+          ) {
+            Text(
+              text = "Ranking por Juego",
+              style = MaterialTheme.typography.titleMedium,
+              fontWeight = FontWeight.Bold
+            )
+            Text(
+              text = "Sube y baja según cómo juegues",
+              style = MaterialTheme.typography.labelSmall,
+              color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+          }
+
+          gameRanks.forEach { rank ->
+            val game = GameRegistry.getById(rank.gameId) ?: return@forEach
+            Row(
+              modifier = Modifier.fillMaxWidth(),
+              horizontalArrangement = Arrangement.SpaceBetween,
+              verticalAlignment = Alignment.CenterVertically
+            ) {
+              Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(text = game.iconEmoji, fontSize = 18.sp)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                  text = game.title,
+                  style = MaterialTheme.typography.labelLarge,
+                  fontWeight = FontWeight.SemiBold,
+                  color = MaterialTheme.colorScheme.onSurface
+                )
+              }
+
+              Surface(
+                shape = RoundedCornerShape(8.dp),
+                color = rank.tier.color.copy(alpha = 0.14f)
+              ) {
+                Text(
+                  text = "${rank.tier.icon} ${rank.label}",
+                  style = MaterialTheme.typography.labelSmall,
+                  fontWeight = FontWeight.Bold,
+                  color = rank.tier.color,
+                  modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                )
+              }
             }
           }
         }

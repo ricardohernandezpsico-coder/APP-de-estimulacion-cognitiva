@@ -5,6 +5,7 @@ import androidx.room.PrimaryKey
 import com.example.model.DailySessionState
 import com.example.model.DifficultyMode
 import com.example.model.GamePlayResult
+import com.example.model.ThemeMode
 import com.example.model.UserSettings
 
 @Entity(tableName = "game_results")
@@ -52,7 +53,10 @@ data class GameProgressEntity(
   // etiqueta visible (Principiante..Experto). masteryStreak sigue subiendo sin límite
   // mientras se siga rindiendo bien en nivel 5, y es lo que de verdad endurece el juego
   // (tiempos, rangos) para que un usuario "Experto" nunca deje de sentir presión.
-  val masteryStreak: Int = 0
+  val masteryStreak: Int = 0,
+  // Ranking tipo ELO (ver RankTier/GameRankInfo en Models.kt): sube o baja con cada
+  // partida según el score, independiente de currentLevel/masteryStreak.
+  val eloRating: Int = 0
 )
 
 @Entity(tableName = "daily_sessions")
@@ -113,7 +117,8 @@ data class UserProfileEntity(
   val difficultyCalculo: Int = 2,
   val difficultyVelocidad: Int = 2,
   val cognitiveAssistance: Boolean = true,
-  val timeScaleFactor: Float = 1.0f
+  val timeScaleFactor: Float = 1.0f,
+  val themeMode: String = "SYSTEM"
 )
 
 fun UserProfileEntity.toDomain(): UserSettings = UserSettings(
@@ -136,7 +141,8 @@ fun UserProfileEntity.toDomain(): UserSettings = UserSettings(
   difficultyCalculo = difficultyCalculo,
   difficultyVelocidad = difficultyVelocidad,
   cognitiveAssistance = cognitiveAssistance,
-  timeScaleFactor = timeScaleFactor
+  timeScaleFactor = timeScaleFactor,
+  themeMode = runCatching { ThemeMode.valueOf(themeMode) }.getOrDefault(ThemeMode.SYSTEM)
 )
 
 fun UserSettings.toEntity(): UserProfileEntity = UserProfileEntity(
@@ -159,5 +165,6 @@ fun UserSettings.toEntity(): UserProfileEntity = UserProfileEntity(
   difficultyCalculo = difficultyCalculo,
   difficultyVelocidad = difficultyVelocidad,
   cognitiveAssistance = cognitiveAssistance,
-  timeScaleFactor = timeScaleFactor
+  timeScaleFactor = timeScaleFactor,
+  themeMode = themeMode.name
 )

@@ -152,6 +152,12 @@ enum class DifficultyMode(val label: String, val description: String) {
   CUSTOM("Personalizada", "Nivel asignado a medida por cada dominio cognitivo")
 }
 
+enum class ThemeMode(val label: String) {
+  LIGHT("Claro"),
+  DARK("Oscuro"),
+  SYSTEM("Sistema")
+}
+
 /**
  * Maestría por dominio (meta-progresión, etapa 4 de la propuesta de gamificación):
  * a diferencia del nivel de cada juego (tope visible en 5), la XP de dominio no
@@ -226,6 +232,45 @@ data class WeeklyChallengeProgress(
   val isComplete: Boolean get() = progress >= def.target
 }
 
+/**
+ * Ranking tipo ELO por juego (idea de Ricardo, 20-sep): a diferencia de Maestría por
+ * Dominio (XP que solo crece), el rating de un juego sube Y baja según el desempeño
+ * de cada partida — da la sensación de "rango" que se puede perder, como en un
+ * ladder competitivo. Es puramente un layer de progreso/motivación: no reemplaza
+ * ni modifica el nivel de dificultad (1-5) ni masteryStreak, que siguen intactos.
+ */
+enum class RankTier(val tierName: String, val minRating: Int, val icon: String, val color: Color) {
+  BRONCE("Bronce", 0, "🥉", Color(0xFFCD7F32)),
+  PLATA("Plata", 250, "🥈", Color(0xFF9CA3AF)),
+  ORO("Oro", 500, "🥇", Color(0xFFF59E0B)),
+  PLATINO("Platino", 750, "💠", Color(0xFF22D3EE)),
+  DIAMANTE("Diamante", 1000, "💎", Color(0xFF60A5FA)),
+  MAESTRO("Maestro", 1250, "👑", Color(0xFFA855F7));
+
+  companion object {
+    const val DIVISION_SIZE = 50
+    fun fromRating(rating: Int): RankTier = entries.lastOrNull { rating >= it.minRating } ?: BRONCE
+  }
+}
+
+data class GameRankInfo(
+  val gameId: String,
+  val rating: Int
+) {
+  val tier: RankTier get() = RankTier.fromRating(rating)
+  private val intoTier: Int get() = rating - tier.minRating
+  /** 1 (a punto de ascender) a 5 (recién ascendido) — como en un ladder competitivo.
+   * Maestro no tiene divisiones, sigue subiendo sin techo (mismo criterio que
+   * MasteryTier/masteryStreak: el ladder nunca "se llena y queda quieto"). */
+  val division: Int? get() =
+    if (tier == RankTier.MAESTRO) null
+    else (5 - (intoTier / RankTier.DIVISION_SIZE)).coerceIn(1, 5)
+  val label: String get() =
+    if (tier == RankTier.MAESTRO) "${tier.tierName} · $rating" else "${tier.tierName} $division"
+  val progressInDivision: Float get() =
+    (intoTier % RankTier.DIVISION_SIZE) / RankTier.DIVISION_SIZE.toFloat()
+}
+
 data class UserSettings(
   val id: Long = 1L,
   val name: String = "Ana",
@@ -247,5 +292,6 @@ data class UserSettings(
   val difficultyCalculo: Int = 2,
   val difficultyVelocidad: Int = 2,
   val cognitiveAssistance: Boolean = true,
-  val timeScaleFactor: Float = 1.0f
+  val timeScaleFactor: Float = 1.0f,
+  val themeMode: ThemeMode = ThemeMode.SYSTEM
 )

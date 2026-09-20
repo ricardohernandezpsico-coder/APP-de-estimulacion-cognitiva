@@ -152,27 +152,12 @@ fun ProgressTrendChart(
         verticalAlignment = Alignment.CenterVertically
       ) {
         Column(modifier = Modifier.weight(1f)) {
-          Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-              text = "Curva de Rendimiento",
-              style = MaterialTheme.typography.titleLarge,
-              fontWeight = FontWeight.Bold,
-              color = MaterialTheme.colorScheme.onSurface
-            )
-            Spacer(modifier = Modifier.width(6.dp))
-            Surface(
-              shape = RoundedCornerShape(8.dp),
-              color = EmeraldAccent.copy(alpha = 0.12f)
-            ) {
-              Text(
-                text = "Room DB",
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Bold,
-                color = EmeraldAccent,
-                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-              )
-            }
-          }
+          Text(
+            text = "Curva de Rendimiento",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface
+          )
           Text(
             text = "Evolución histórica de tus sesiones cognitivas",
             style = MaterialTheme.typography.bodySmall,

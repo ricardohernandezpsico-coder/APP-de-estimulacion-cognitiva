@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.model.DifficultyMode
 import com.example.model.DomainType
+import com.example.model.ThemeMode
 import com.example.model.UserSettings
 import com.example.ui.theme.EmeraldAccent
 import com.example.ui.theme.TealPrimary
@@ -64,6 +65,7 @@ fun SettingsScreen(
   var diffVelocidad by remember(userSettings.difficultyVelocidad) { mutableStateOf(userSettings.difficultyVelocidad) }
   var cognitiveAssistance by remember(userSettings.cognitiveAssistance) { mutableStateOf(userSettings.cognitiveAssistance) }
   var timeScaleFactor by remember(userSettings.timeScaleFactor) { mutableStateOf(userSettings.timeScaleFactor) }
+  var themeMode by remember(userSettings.themeMode) { mutableStateOf(userSettings.themeMode) }
 
   var showNewProfileDialog by remember { mutableStateOf(false) }
   var profileToDelete by remember { mutableStateOf<UserSettings?>(null) }
@@ -694,6 +696,56 @@ fun SettingsScreen(
             colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = TealPrimary),
             modifier = Modifier.testTag("switch_mode_timed")
           )
+        }
+
+        HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
+
+        // Theme mode selector (Claro / Oscuro / Sistema)
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+          Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Default.DarkMode, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(modifier = Modifier.width(10.dp))
+            Text(
+              text = "Tema de la app",
+              style = MaterialTheme.typography.bodyMedium,
+              fontWeight = FontWeight.SemiBold
+            )
+          }
+          Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            ThemeMode.values().forEach { mode ->
+              FilterChip(
+                selected = themeMode == mode,
+                onClick = {
+                  themeMode = mode
+                  viewModel.updateSettings(
+                    name = nameInput,
+                    weeklyGoal = weeklyGoal,
+                    defaultTimed = defaultTimed,
+                    sound = soundEnabled,
+                    haptics = hapticsEnabled,
+                    notificationsEnabled = notificationsEnabled,
+                    reminderHour = reminderHour,
+                    reminderMinute = reminderMinute,
+                    themeMode = mode
+                  )
+                },
+                label = {
+                  Text(
+                    text = when (mode) {
+                      ThemeMode.LIGHT -> "☀️ Claro"
+                      ThemeMode.DARK -> "🌙 Oscuro"
+                      ThemeMode.SYSTEM -> "⚙️ Sistema"
+                    }
+                  )
+                },
+                colors = FilterChipDefaults.filterChipColors(
+                  selectedContainerColor = TealPrimary.copy(alpha = 0.15f),
+                  selectedLabelColor = TealPrimary
+                ),
+                modifier = Modifier.testTag("chip_theme_${mode.name.lowercase()}")
+              )
+            }
+          }
         }
 
         HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)

@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.example.model.DomainType
 import com.example.model.GameDefinition
+import com.example.model.GameRankInfo
 import com.example.model.GameRegistry
 import com.example.model.LevelTier
 import com.example.ui.components.DomainChip
@@ -40,6 +41,7 @@ fun GamesLibraryScreen(
   modifier: Modifier = Modifier
 ) {
   val gameLevels by viewModel.gameLevels.collectAsState()
+  val gameRanks by viewModel.gameRanks.collectAsState()
   val history by viewModel.gameHistory.collectAsState()
   val userSettings by viewModel.userSettings.collectAsState()
 
@@ -122,6 +124,7 @@ fun GamesLibraryScreen(
       items(filteredGames) { game ->
         val level = gameLevels[game.id] ?: 1
         val levelTier = LevelTier.fromLevel(level)
+        val rankInfo = gameRanks.find { it.gameId == game.id } ?: GameRankInfo(game.id, 0)
         val bestScore = history.filter { it.gameId == game.id }.maxOfOrNull { it.score }
 
         Card(
@@ -194,13 +197,27 @@ fun GamesLibraryScreen(
                   )
                 }
 
-                if (bestScore != null) {
+                Surface(
+                  shape = RoundedCornerShape(8.dp),
+                  color = rankInfo.tier.color.copy(alpha = 0.14f)
+                ) {
                   Text(
-                    text = "Mejor: $bestScore",
+                    text = "${rankInfo.tier.icon} ${rankInfo.label}",
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    fontWeight = FontWeight.Bold,
+                    color = rankInfo.tier.color,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
                   )
                 }
+              }
+
+              if (bestScore != null) {
+                Text(
+                  text = "Mejor: $bestScore",
+                  style = MaterialTheme.typography.labelSmall,
+                  color = MaterialTheme.colorScheme.onSurfaceVariant,
+                  modifier = Modifier.padding(top = 4.dp)
+                )
               }
             }
 

@@ -58,6 +58,12 @@ class NeuroVidaViewModel(application: Application) : AndroidViewModel(applicatio
   val domainMasteryInfo: StateFlow<List<DomainMasteryInfo>> = repository.domainMastery.map { xpMap ->
     DomainType.values().map { d -> DomainMasteryInfo(domain = d, xp = xpMap[d] ?: 0) }
   }.stateIn(viewModelScope, SharingStarted.Eagerly, DomainType.values().map { DomainMasteryInfo(it, 0) })
+
+  // Ranking ELO por juego (idea de Ricardo, 20-sep): GameRankInfo deriva tier/división
+  // a partir del rating crudo que guarda el repositorio, uno por cada uno de los 9 juegos.
+  val gameRanks: StateFlow<List<GameRankInfo>> = repository.gameRanks.map { ratingMap ->
+    GameRegistry.allGames.map { g -> GameRankInfo(gameId = g.id, rating = ratingMap[g.id] ?: 0) }
+  }.stateIn(viewModelScope, SharingStarted.Eagerly, GameRegistry.allGames.map { GameRankInfo(it.id, 0) })
   val dailySession = repository.dailySession
 
   private val _currentTab = MutableStateFlow(AppTab.HOY)
@@ -279,7 +285,8 @@ class NeuroVidaViewModel(application: Application) : AndroidViewModel(applicatio
     reminderHour: Int = userSettings.value.reminderHour,
     reminderMinute: Int = userSettings.value.reminderMinute,
     avatar: String = userSettings.value.avatar,
-    difficultyMode: DifficultyMode = userSettings.value.difficultyMode
+    difficultyMode: DifficultyMode = userSettings.value.difficultyMode,
+    themeMode: ThemeMode = userSettings.value.themeMode
   ) {
     viewModelScope.launch {
       val current = userSettings.value
@@ -293,7 +300,8 @@ class NeuroVidaViewModel(application: Application) : AndroidViewModel(applicatio
         notificationsEnabled = notificationsEnabled,
         reminderHour = reminderHour,
         reminderMinute = reminderMinute,
-        difficultyMode = difficultyMode
+        difficultyMode = difficultyMode,
+        themeMode = themeMode
       )
       repository.updateSettings(updated)
 

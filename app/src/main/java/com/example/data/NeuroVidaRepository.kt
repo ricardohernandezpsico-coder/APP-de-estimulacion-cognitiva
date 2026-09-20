@@ -89,6 +89,21 @@ class NeuroVidaRepository(
       initialValue = GameRegistry.allGames.associate { it.id to 0 }
     )
 
+  // 3c. Reactive ELO Rank Map from Room — ranking competitivo por juego (ver
+  // RankTier/GameRankInfo en Models.kt), independiente de nivel/masteryStreak.
+  val gameRanks: StateFlow<Map<String, Int>> = gameProgressDao.getAllProgress()
+    .map { list ->
+      val map = mutableMapOf<String, Int>()
+      GameRegistry.allGames.forEach { g -> map[g.id] = 0 }
+      list.forEach { p -> map[p.gameId] = p.eloRating }
+      map
+    }
+    .stateIn(
+      scope = repositoryScope,
+      started = SharingStarted.Eagerly,
+      initialValue = GameRegistry.allGames.associate { it.id to 0 }
+    )
+
   // 4b. Reactive Domain Mastery XP Map from Room — meta-progresión sin techo,
   // ver DomainMasteryInfo/MasteryTier en Models.kt.
   val domainMastery: StateFlow<Map<DomainType, Int>> = domainMasteryDao.getAll()
@@ -405,9 +420,13 @@ class NeuroVidaRepository(
       }
     }
 
+    val newRating = (currentProgress.eloRating + eloDelta(result.score, currentProgress.eloRating))
+      .coerceAtLeast(0)
+
     val updatedProgress = currentProgress.copy(
       currentLevel = newLevel,
       masteryStreak = newMastery,
+      eloRating = newRating,
       highestScore = maxOf(currentProgress.highestScore, result.score),
       totalGamesPlayed = currentProgress.totalGamesPlayed + 1,
       lastPlayedTimestamp = result.timestamp
@@ -453,6 +472,22 @@ class NeuroVidaRepository(
     }
 
     didLevelUp
+  }
+
+  // Cuánto sube o baja el ELO de un juego tras una partida. A mayor tier, más
+  // exigente el umbral para seguir ganando puntos (igual que un ladder real: cuesta
+  // más mantenerse arriba que subir desde abajo). Piso en 0 (Bronce 5), sin techo.
+  private fun eloDelta(score: Int, currentRating: Int): Int {
+    val tier = RankTier.fromRating(currentRating)
+    val gainThreshold = 55 + tier.ordinal * 5
+    val lossThreshold = 40 + tier.ordinal * 5
+    return when {
+      score >= gainThreshold + 25 -> 25
+      score >= gainThreshold -> 15
+      score >= lossThreshold -> 2
+      score >= lossThreshold - 20 -> -10
+      else -> -20
+    }
   }
 
   private suspend fun awardDomainXp(domain: DomainType, amount: Int) {

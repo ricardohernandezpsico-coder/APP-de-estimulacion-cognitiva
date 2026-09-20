@@ -10,6 +10,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BarChart
@@ -32,6 +33,7 @@ import com.example.ui.screens.GamesLibraryScreen
 import com.example.ui.screens.HomeScreen
 import com.example.ui.screens.ProgressScreen
 import com.example.ui.screens.SettingsScreen
+import com.example.model.ThemeMode
 import com.example.ui.theme.NeuroVidaTheme
 import com.example.ui.theme.TealPrimary
 import com.example.viewmodel.AppTab
@@ -44,7 +46,13 @@ class MainActivity : ComponentActivity() {
     super.onCreate(savedInstanceState)
     enableEdgeToEdge()
     setContent {
-      NeuroVidaTheme {
+      val userSettings by viewModel.userSettings.collectAsState()
+      val darkTheme = when (userSettings.themeMode) {
+        ThemeMode.LIGHT -> false
+        ThemeMode.DARK -> true
+        ThemeMode.SYSTEM -> isSystemInDarkTheme()
+      }
+      NeuroVidaTheme(darkTheme = darkTheme) {
         NeuroVidaApp(viewModel = viewModel)
       }
     }

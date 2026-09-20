@@ -337,6 +337,64 @@ resultados. Instalado en el emulador (`medium_phone`): abre en Progreso sin cras
 Dominio" se ve normal, sin ningún rastro de "Logros" en el árbol de UI (uiautomator dump). Sin
 errores fatales en logcat.
 
+## Ranking ELO por juego + modo día/noche/sistema + limpieza visual (20-sep)
+
+Tres pedidos en una sola pasada:
+
+### Ranking tipo ELO por juego
+
+Idea de Ricardo: un ranking (Bronce 1-5 ... hasta tiers superiores) asociado a los niveles de
+cada juego, que suba **y baje** según el desempeño — a diferencia de Maestría por Dominio (XP que
+solo crece). Es un layer de progreso puramente motivacional: no toca nivel de dificultad ni
+`masteryStreak`, que siguen exactamente igual.
+
+- `RankTier` (Models.kt): Bronce(0) → Plata(250) → Oro(500) → Platino(750) → Diamante(1000) →
+  Maestro(1250+, sin divisiones, sigue subiendo sin techo — mismo criterio que el resto de la
+  progresión "sin techo" del proyecto). Cada tier bajo Maestro tiene 5 divisiones de 50 puntos
+  (división 5 = recién ascendido, división 1 = a punto de subir de tier), igual que un ladder
+  competitivo real.
+- `GameRankInfo(gameId, rating)`: deriva tier/división/label a partir del rating crudo. Un rating
+  por juego (9 en total, uno por cada uno de `GameRegistry.allGames`), no por dominio — el ranking
+  vive en `GameProgressEntity.eloRating` (Room, columna nueva, DB v7→v8).
+- Fórmula de ajuste (`NeuroVidaRepository.eloDelta`): a mayor tier, más exigente el score para
+  seguir ganando puntos (`gainThreshold = 55 + tier.ordinal * 5`), igual que cuesta más mantenerse
+  arriba en un ranking real que subir desde abajo. Rango de cambio: +25 (excelente) a -20 (muy
+  flojo), piso en 0 (no hay Bronce por debajo de 5).
+- UI: badge de rango (ícono + "Bronce 3", etc.) junto al badge de nivel en cada tarjeta de
+  `GamesLibraryScreen.kt`, y una card nueva "Ranking por Juego" en `ProgressScreen.kt` (debajo de
+  Maestría por Dominio) listando los 9 juegos con su rango actual.
+- Verificado en el emulador: instalación limpia (DB v8) mostró Bronce 5 (rating 0) en los 9 juegos.
+  Jugué una partida real de Comparación Instantánea (75 puntos, 9/12 aciertos) — con rating inicial
+  0 (tier Bronce, ordinal 0) el umbral de ganancia es 55, 75 cae en el tramo "bueno" (+15), rating
+  esperado 15 — coincide con el cálculo manual. Se mantiene en "Bronce 5" porque el cambio de
+  división recién ocurre en rating 50 (esperado, no es bug — la primera partida no alcanza para
+  subir de división, que es la intención: cuesta más de una partida buena).
+
+### Modo Claro/Oscuro/Sistema
+
+Ricardo reportó que esta opción "antes estaba, ya no sale" — no se encontró rastro en el historial
+de git de que existiera antes en este repo (siempre fue `isSystemInDarkTheme()` fijo sin selector),
+así que puede haber sido una vista previa de Google AI Studio que no llegó al export. De cualquier
+forma, se implementó desde cero:
+- `ThemeMode` enum (Models.kt: LIGHT/DARK/SYSTEM) + campo `UserSettings.themeMode`, persistido en
+  Room (`UserProfileEntity.themeMode`, DB v6→v7).
+- Selector de 3 chips ("☀️ Claro", "🌙 Oscuro", "⚙️ Sistema") en la card "Experiencia de Juego" de
+  `SettingsScreen.kt`, aplica inmediato (sin botón de guardar aparte, a diferencia del selector de
+  dificultad).
+- `MainActivity.kt` computa `darkTheme` a partir de `userSettings.themeMode` (con
+  `isSystemInDarkTheme()` como fallback para SYSTEM) y se lo pasa a `NeuroVidaTheme`.
+- Verificado en el emulador: los 3 modos cambian el tema de toda la app en vivo (capturas de
+  pantalla confirmadas), y el estado persiste al cambiar de pestaña.
+
+### Limpieza visual: badge "Room DB" en Progreso
+
+Ricardo señaló una "palabra desprolija" junto a "Curva de Rendimiento" en la pestaña Progreso — era
+una etiqueta de debug (`"Room DB"`) pegada al título en `ProgressTrendChart.kt`, resto del scaffold
+original de AI Studio. Se sacó; el título ahora se ve limpio.
+
+Build limpio (`./gradlew.bat assembleDebug`) e instalado/probado en el emulador sin crashes para
+los tres cambios.
+
 ## Pendiente / por confirmar con Ricardo
 
 - Firebase: qué partes se van a usar de verdad (`firebase-ai` ya está en las dependencias activas,
