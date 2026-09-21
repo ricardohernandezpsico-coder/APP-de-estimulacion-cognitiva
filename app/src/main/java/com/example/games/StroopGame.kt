@@ -76,7 +76,6 @@ fun StroopGame(
   val totalTrials = 12
   var currentRound by remember { mutableStateOf(1) }
   var correctCount by remember { mutableStateOf(0) }
-  var scorePoints by remember { mutableStateOf(0) }
 
   var currentTrial by remember { mutableStateOf(generateStroopTrial(level, intensity)) }
   var selectedChoice by remember { mutableStateOf<String?>(null) }
@@ -96,7 +95,6 @@ fun StroopGame(
 
     if (isCorrect) {
       correctCount++
-      scorePoints += 10
       flashSuccess = true
     } else {
       flashSuccess = false

@@ -51,6 +51,16 @@ data class ChipTrial(
   val rule: ChipRule
 )
 
+/** Auditoría (21-sep): "Modo Reto" no hacía nada acá -- `timed` solo llegaba al
+ *  header como ícono cosmético, sin presión de tiempo real. Mismo criterio de
+ *  escala que `StroopGame.baseTimeForLevel` (carga cognitiva similar: reconocer
+ *  regla + dirección bajo presión). */
+private fun baseTimeForCambioChip(level: Int, intensity: Int): Int {
+  val byLevel = when (level) { 1 -> 9; 2 -> 8; 3 -> 7; 4 -> 6; else -> 5 }
+  val fromMastery = intensity / 3
+  return (byLevel - fromMastery).coerceAtLeast(3)
+}
+
 @Composable
 fun CambioChipGame(
   level: Int,
@@ -62,7 +72,6 @@ fun CambioChipGame(
   val totalTrials = 12
   var currentRound by remember { mutableStateOf(1) }
   var correctCount by remember { mutableStateOf(0) }
-  var scorePoints by remember { mutableStateOf(0) }
   var currentStreak by remember { mutableStateOf(0) }
 
   // Antes el nivel no influía en NADA acá — la regla siempre cambiaba cada 3
@@ -78,13 +87,21 @@ fun CambioChipGame(
   var activeRule by remember { mutableStateOf(ChipRule.DIRECCION) }
   var currentTrial by remember { mutableStateOf(generateTrial(activeRule)) }
   var selectedDirection by remember { mutableStateOf<Direction?>(null) }
+  // Auditoría (21-sep): antes no existía -- una respuesta vencida no tenía forma
+  // de distinguirse de "todavía sin responder" porque `selectedDirection` solo
+  // se llena con un toque real. Este flag separado deja avanzar la ronda por
+  // timeout sin fingir que el usuario eligió una dirección que no tocó.
+  var timedOut by remember { mutableStateOf(false) }
   var showRuleChangeBanner by remember { mutableStateOf(false) }
 
   var showFlash by remember { mutableStateOf(false) }
   var flashSuccess by remember { mutableStateOf(true) }
 
+  val baseTime = remember(level, intensity) { baseTimeForCambioChip(level, intensity) }
+  var timeLeft by remember { mutableStateOf(if (timed) baseTime else null) }
+
   fun handleAnswer(chosen: Direction) {
-    if (selectedDirection != null) return
+    if (selectedDirection != null || timedOut) return
     selectedDirection = chosen
     val expected = if (currentTrial.rule == ChipRule.DIRECCION) currentTrial.pointing else currentTrial.position
     val isCorrect = chosen == expected
@@ -92,7 +109,6 @@ fun CambioChipGame(
     if (isCorrect) {
       correctCount++
       currentStreak++
-      scorePoints += 10
       flashSuccess = true
     } else {
       currentStreak = 0
@@ -101,8 +117,24 @@ fun CambioChipGame(
     showFlash = true
   }
 
-  LaunchedEffect(selectedDirection) {
-    if (selectedDirection != null) {
+  LaunchedEffect(currentRound, timed) {
+    if (timed) {
+      timeLeft = baseTime
+      while ((timeLeft ?: 0) > 0) {
+        delay(1000)
+        timeLeft = (timeLeft ?: 1) - 1
+      }
+      if (selectedDirection == null && !timedOut) {
+        currentStreak = 0
+        flashSuccess = false
+        timedOut = true
+        showFlash = true
+      }
+    }
+  }
+
+  LaunchedEffect(selectedDirection, timedOut) {
+    if (selectedDirection != null || timedOut) {
       delay(550)
       showFlash = false
       if (currentRound >= totalTrials) {
@@ -120,6 +152,7 @@ fun CambioChipGame(
         }
         currentTrial = generateTrial(activeRule)
         selectedDirection = null
+        timedOut = false
       }
     }
   }
@@ -139,6 +172,7 @@ fun CambioChipGame(
         currentRound = currentRound,
         totalRounds = totalTrials,
         isTimed = timed,
+        timeLeftSeconds = timeLeft,
         onQuit = onQuit
       )
 

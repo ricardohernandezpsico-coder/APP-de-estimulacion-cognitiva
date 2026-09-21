@@ -2,6 +2,7 @@ package com.example.data.local
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import com.example.model.AgeBand
 import com.example.model.AppLanguage
 import com.example.model.DailySessionState
 import com.example.model.DifficultyMode
@@ -120,7 +121,9 @@ data class UserProfileEntity(
   val cognitiveAssistance: Boolean = true,
   val timeScaleFactor: Float = 1.0f,
   val themeMode: String = "SYSTEM",
-  val language: String = "es"
+  val language: String = "es",
+  /** `null` = todavía no completó el onboarding de edad -- ver [AgeBand]. */
+  val ageBand: String? = null
 )
 
 fun UserProfileEntity.toDomain(): UserSettings = UserSettings(
@@ -145,7 +148,8 @@ fun UserProfileEntity.toDomain(): UserSettings = UserSettings(
   cognitiveAssistance = cognitiveAssistance,
   timeScaleFactor = timeScaleFactor,
   themeMode = runCatching { ThemeMode.valueOf(themeMode) }.getOrDefault(ThemeMode.SYSTEM),
-  language = AppLanguage.fromCode(language)
+  language = AppLanguage.fromCode(language),
+  ageBand = ageBand?.let { runCatching { AgeBand.valueOf(it) }.getOrNull() }
 )
 
 fun UserSettings.toEntity(): UserProfileEntity = UserProfileEntity(
@@ -170,5 +174,6 @@ fun UserSettings.toEntity(): UserProfileEntity = UserProfileEntity(
   cognitiveAssistance = cognitiveAssistance,
   timeScaleFactor = timeScaleFactor,
   themeMode = themeMode.name,
-  language = language.code
+  language = language.code,
+  ageBand = ageBand?.name
 )

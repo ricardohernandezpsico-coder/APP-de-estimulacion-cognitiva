@@ -29,6 +29,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.model.AgeBand
 import com.example.model.AppLanguage
 import com.example.model.DifficultyMode
 import com.example.model.DomainType
@@ -69,6 +70,7 @@ fun SettingsScreen(
   var timeScaleFactor by remember(userSettings.timeScaleFactor) { mutableStateOf(userSettings.timeScaleFactor) }
   var themeMode by remember(userSettings.themeMode) { mutableStateOf(userSettings.themeMode) }
   var appLanguage by remember(userSettings.language) { mutableStateOf(userSettings.language) }
+  var ageBand by remember(userSettings.ageBand) { mutableStateOf(userSettings.ageBand ?: AgeBand.ADULT) }
 
   var showNewProfileDialog by remember { mutableStateOf(false) }
   var profileToDelete by remember { mutableStateOf<UserSettings?>(null) }
@@ -822,6 +824,46 @@ fun SettingsScreen(
               )
             }
           }
+        }
+
+        HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
+
+        // Rango de edad (piloto de perfiles por edad, 20-sep): mismo patrón visual que
+        // el selector de tema. Cambia el DDA/tamaño de cartas en Parejas Ocultas
+        // únicamente por ahora -- el onboarding prometió "podés cambiarlo cuando
+        // quieras desde Ajustes", esto cumple esa promesa.
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+          Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Default.Person, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(modifier = Modifier.width(10.dp))
+            Text(
+              text = "Rango de edad",
+              style = MaterialTheme.typography.bodyMedium,
+              fontWeight = FontWeight.SemiBold
+            )
+          }
+          Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            AgeBand.entries.forEach { band ->
+              FilterChip(
+                selected = ageBand == band,
+                onClick = {
+                  ageBand = band
+                  viewModel.setAgeBand(band)
+                },
+                label = { Text(text = band.label) },
+                colors = FilterChipDefaults.filterChipColors(
+                  selectedContainerColor = TealPrimary.copy(alpha = 0.15f),
+                  selectedLabelColor = TealPrimary
+                ),
+                modifier = Modifier.testTag("chip_age_band_${band.name.lowercase()}")
+              )
+            }
+          }
+          Text(
+            text = "Por ahora ajusta la dificultad y el tamaño de las cartas en Parejas Ocultas.",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+          )
         }
 
         HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)

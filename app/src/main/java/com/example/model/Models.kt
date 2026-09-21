@@ -159,6 +159,22 @@ enum class ThemeMode(val label: String) {
 }
 
 /**
+ * Piloto de perfiles por edad (20-sep): Ricardo compartió material sobre calibrar el DDA
+ * (y la accesibilidad de la UI) según el perfil del usuario en vez de un solo valor
+ * global para todos -- ej. el área táctil/espaciado recomendado para adultos mayores es
+ * literalmente más grande que lo que un adulto joven encuentra cómodo, no hay un
+ * "tamaño correcto" único. Arranca como piloto en Parejas Ocultas
+ * (`com.example.games.parejas`, ver `LocalAgeBand`), no en los 9 juegos todavía.
+ * `null` en [UserSettings.ageBand] significa "todavía no se preguntó" -- gatilla la
+ * pantalla de onboarding una sola vez.
+ */
+enum class AgeBand(val label: String) {
+  UNDER_18("Menos de 18"),
+  ADULT("18 a 64"),
+  SENIOR("65 o más")
+}
+
+/**
  * Maestría por dominio (meta-progresión, etapa 4 de la propuesta de gamificación):
  * a diferencia del nivel de cada juego (tope visible en 5), la XP de dominio no
  * tiene techo — sigue dando sensación de avance aunque todos los juegos de ese
@@ -294,5 +310,7 @@ data class UserSettings(
   val cognitiveAssistance: Boolean = true,
   val timeScaleFactor: Float = 1.0f,
   val themeMode: ThemeMode = ThemeMode.SYSTEM,
-  val language: AppLanguage = AppLanguage.SPANISH
+  val language: AppLanguage = AppLanguage.SPANISH,
+  /** `null` = todavía no completó el onboarding de edad -- ver [AgeBand]. */
+  val ageBand: AgeBand? = null
 )

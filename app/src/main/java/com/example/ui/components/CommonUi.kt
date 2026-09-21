@@ -1,8 +1,18 @@
 package com.example.ui.components
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -18,6 +28,7 @@ import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -26,6 +37,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -239,6 +251,76 @@ fun GameHeader(
         modifier = Modifier.fillMaxWidth().height(3.dp),
         color = domain.color,
         trackColor = MaterialTheme.colorScheme.surfaceVariant
+      )
+    }
+  }
+}
+
+/**
+ * Pantalla "prepárate 3-2-1" compartida entre juegos con transición de ronda/nivel --
+ * extraída de Parejas Ocultas (`ParejasGame.kt`) para que Secuencia Lumínica pueda tener
+ * la misma sensación de dinamismo entre rondas sin duplicar la animación de pulso/cambio
+ * de dígito. `title`/`subtitle` quedan a cargo de quien llama (cada juego tiene su propio
+ * texto según la razón de la transición), `accentColor` es el color de dominio del juego.
+ */
+@Composable
+fun GameCountdownBoard(
+  title: String,
+  subtitle: String,
+  secondsLeft: Int,
+  accentColor: Color,
+  onQuit: () -> Unit
+) {
+  val infiniteTransition = rememberInfiniteTransition(label = "countdownPulse")
+  val pulse by infiniteTransition.animateFloat(
+    initialValue = 0.88f,
+    targetValue = 1.12f,
+    animationSpec = infiniteRepeatable(animation = tween(500, easing = FastOutSlowInEasing), repeatMode = RepeatMode.Reverse),
+    label = "countdownPulseScale"
+  )
+
+  Box(modifier = Modifier.fillMaxSize().background(accentColor)) {
+    IconButton(onClick = onQuit, modifier = Modifier.align(Alignment.TopStart).padding(12.dp).testTag("btn_quit_game")) {
+      Icon(Icons.Default.Close, contentDescription = "Salir del juego", tint = Color.White)
+    }
+
+    Column(
+      modifier = Modifier.fillMaxSize(),
+      horizontalAlignment = Alignment.CenterHorizontally,
+      verticalArrangement = Arrangement.Center
+    ) {
+      Text(
+        text = title,
+        style = MaterialTheme.typography.headlineSmall,
+        fontWeight = FontWeight.Bold,
+        color = Color.White
+      )
+      Spacer(Modifier.height(28.dp))
+      Box(contentAlignment = Alignment.Center) {
+        Box(
+          modifier = Modifier
+            .size(150.dp)
+            .graphicsLayer { scaleX = pulse; scaleY = pulse }
+            .background(Color.White.copy(alpha = 0.15f), shape = CircleShape)
+        )
+        AnimatedContent(
+          targetState = secondsLeft,
+          transitionSpec = { (scaleIn(initialScale = 0.5f) + fadeIn()) togetherWith (scaleOut(targetScale = 1.6f) + fadeOut()) },
+          label = "countdownNumber"
+        ) { seconds ->
+          Text(
+            text = "$seconds",
+            style = MaterialTheme.typography.displayLarge,
+            fontWeight = FontWeight.ExtraBold,
+            color = Color.White
+          )
+        }
+      }
+      Spacer(Modifier.height(20.dp))
+      Text(
+        text = subtitle,
+        style = MaterialTheme.typography.bodyMedium,
+        color = Color.White.copy(alpha = 0.85f)
       )
     }
   }

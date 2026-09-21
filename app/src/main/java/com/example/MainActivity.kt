@@ -30,8 +30,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.example.games.*
+import com.example.ui.LocalAgeBand
 import com.example.ui.i18n.LocalAppLanguage
 import com.example.ui.i18n.strings
+import com.example.ui.screens.AgeBandOnboardingScreen
 import com.example.ui.screens.GamesLibraryScreen
 import com.example.ui.screens.HomeScreen
 import com.example.ui.screens.ProgressScreen
@@ -55,9 +57,19 @@ class MainActivity : ComponentActivity() {
         ThemeMode.DARK -> true
         ThemeMode.SYSTEM -> isSystemInDarkTheme()
       }
-      CompositionLocalProvider(LocalAppLanguage provides userSettings.language) {
+      CompositionLocalProvider(
+        LocalAppLanguage provides userSettings.language,
+        LocalAgeBand provides (userSettings.ageBand ?: com.example.model.AgeBand.ADULT)
+      ) {
         NeuroVidaTheme(darkTheme = darkTheme) {
-          NeuroVidaApp(viewModel = viewModel)
+          // Onboarding de edad (piloto de perfiles, 20-sep): mientras no se resuelva
+          // `ageBand`, no se monta la app normal (bottom nav, tabs, etc.) -- mismo
+          // criterio que Lumosity pidiendo un dato mínimo antes de la primera sesión.
+          if (userSettings.ageBand == null) {
+            AgeBandOnboardingScreen(onSelected = { band -> viewModel.setAgeBand(band) })
+          } else {
+            NeuroVidaApp(viewModel = viewModel)
+          }
         }
       }
     }

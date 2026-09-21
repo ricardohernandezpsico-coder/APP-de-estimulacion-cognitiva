@@ -101,6 +101,9 @@ dependencies {
   implementation(libs.androidx.work.runtime.ktx)
   // implementation(libs.coil.compose)
   implementation(libs.converter.moshi)
+  implementation(libs.flowmvi.core)
+  implementation(libs.flowmvi.android)
+  implementation(libs.flowmvi.compose)
   implementation(libs.firebase.ai)
   // Uncomment to use Firestore:
   // implementation(libs.firebase.firestore)

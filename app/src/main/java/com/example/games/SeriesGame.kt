@@ -30,6 +30,16 @@ data class SeriesItem(
   val ruleExplanation: String
 )
 
+/** Auditoría (21-sep): "Modo Reto" no hacía nada acá -- `timed` solo llegaba al
+ *  header como ícono cosmético. Piso más alto que en los demás juegos con
+ *  temporizador porque razonar una regla lógica lleva más tiempo que reconocer
+ *  un color o una dirección. */
+private fun baseTimeForSeries(level: Int, intensity: Int): Int {
+  val byLevel = when (level) { 1 -> 14; 2 -> 13; 3 -> 12; 4 -> 11; else -> 10 }
+  val fromMastery = intensity / 4
+  return (byLevel - fromMastery).coerceAtLeast(6)
+}
+
 @Composable
 fun SeriesGame(
   level: Int,
@@ -55,6 +65,9 @@ fun SeriesGame(
   var showFlash by remember { mutableStateOf(false) }
   var flashSuccess by remember { mutableStateOf(true) }
 
+  val baseTime = remember(level, intensity) { baseTimeForSeries(level, intensity) }
+  var timeLeft by remember { mutableStateOf(if (timed) baseTime else null) }
+
   fun handleChoice(choice: String) {
     if (selectedChoice != null) return
     selectedChoice = choice
@@ -70,6 +83,19 @@ fun SeriesGame(
     }
     showExplanation = true
     showFlash = true
+  }
+
+  LaunchedEffect(currentRound, timed) {
+    if (timed) {
+      timeLeft = baseTime
+      while ((timeLeft ?: 0) > 0) {
+        delay(1000)
+        timeLeft = (timeLeft ?: 1) - 1
+      }
+      if (selectedChoice == null) {
+        handleChoice("TIMEOUT")
+      }
+    }
   }
 
   LaunchedEffect(selectedChoice) {
@@ -103,6 +129,7 @@ fun SeriesGame(
         currentRound = currentRound,
         totalRounds = totalTrials,
         isTimed = timed,
+        timeLeftSeconds = timeLeft,
         onQuit = onQuit
       )
 

@@ -14,7 +14,7 @@ import androidx.room.RoomDatabase
     DomainMasteryEntity::class,
     ClaimedWeeklyChallengeEntity::class
   ],
-  version = 9,
+  version = 10,
   exportSchema = false
 )
 abstract class NeuroVidaDatabase : RoomDatabase() {

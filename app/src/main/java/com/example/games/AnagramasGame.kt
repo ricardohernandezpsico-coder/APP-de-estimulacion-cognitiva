@@ -61,6 +61,17 @@ val AnagramBank = listOf(
   AnagramItem("RESILIENCIA", "Capacidad de adaptarse tras la adversidad")
 )
 
+/** Auditoría (21-sep): "Modo Reto" no hacía nada acá -- `timed` solo llegaba al
+ *  header como ícono cosmético. Referencia de ~3.5s por letra (armar letra por
+ *  letra es más lento que elegir una opción), con algo menos de margen en
+ *  niveles altos y con la maestría. */
+private fun baseTimeForAnagrama(wordLength: Int, level: Int, intensity: Int): Int {
+  val perLetterMs = 3.5
+  val byLevel = (wordLength * perLetterMs) - (level - 1)
+  val fromMastery = intensity / 10
+  return (byLevel - fromMastery).toInt().coerceAtLeast(8)
+}
+
 @Composable
 fun AnagramasGame(
   level: Int,
@@ -109,6 +120,8 @@ fun AnagramasGame(
 
   var showFlash by remember { mutableStateOf(false) }
   var flashSuccess by remember { mutableStateOf(true) }
+
+  var timeLeft by remember { mutableStateOf(if (timed) baseTimeForAnagrama(currentItem.targetWord.length, level, intensity) else null) }
 
   fun onLetterTapped(index: Int, char: Char) {
     if (usedLetterIndices.contains(index)) return
@@ -159,6 +172,24 @@ fun AnagramasGame(
     }
   }
 
+  LaunchedEffect(currentRound, timed) {
+    if (timed) {
+      timeLeft = baseTimeForAnagrama(currentItem.targetWord.length, level, intensity)
+      while ((timeLeft ?: 0) > 0) {
+        delay(1000)
+        timeLeft = (timeLeft ?: 1) - 1
+      }
+      // Se acabó el tiempo sin terminar de armar la palabra -> cuenta como
+      // fallo (flash rojo) y avanza por el mismo camino que un intento
+      // incorrecto real. `!showFlash` evita duplicar el avance si la última
+      // letra se completó justo cuando el reloj también llegaba a 0.
+      if (!showFlash && currentAssembly.size < currentItem.targetWord.length) {
+        flashSuccess = false
+        showFlash = true
+      }
+    }
+  }
+
   Box(
     modifier = Modifier
       .fillMaxSize()
@@ -174,6 +205,7 @@ fun AnagramasGame(
         currentRound = currentRound,
         totalRounds = totalTrials,
         isTimed = timed,
+        timeLeftSeconds = timeLeft,
         onQuit = onQuit
       )
 

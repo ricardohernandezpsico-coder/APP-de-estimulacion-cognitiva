@@ -319,6 +319,18 @@ class NeuroVidaViewModel(application: Application) : AndroidViewModel(applicatio
     }
   }
 
+  /**
+   * Onboarding de edad (piloto de perfiles por edad, 20-sep) -- función propia en vez de
+   * sumarse a `updateSettings` porque es una acción de una sola vez que además decide si
+   * se muestra la pantalla de onboarding (`userSettings.ageBand == null`), no una edición
+   * más de Ajustes.
+   */
+  fun setAgeBand(band: AgeBand) {
+    viewModelScope.launch {
+      repository.updateSettings(userSettings.value.copy(ageBand = band))
+    }
+  }
+
   fun triggerTestNotification() {
     CognitiveReminderWorker.triggerImmediateTestReminder(getApplication())
   }
