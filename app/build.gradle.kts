@@ -139,6 +139,14 @@ dependencies {
   androidTestImplementation(libs.androidx.runner)
   debugImplementation(libs.androidx.compose.ui.test.manifest)
   debugImplementation(libs.androidx.compose.ui.tooling)
+  androidTestImplementation(libs.androidx.room.testing)
   "ksp"(libs.androidx.room.compiler)
   "ksp"(libs.moshi.kotlin.codegen)
+}
+
+ksp {
+  // Auditoría (21-sep, fase 2): habilita el historial de esquemas de Room -- sin esto
+  // no hay forma de escribir ni de testear una Migration real (Room necesita el JSON
+  // del esquema anterior para saber qué cambió entre versiones).
+  arg("room.schemaLocation", "$projectDir/schemas")
 }

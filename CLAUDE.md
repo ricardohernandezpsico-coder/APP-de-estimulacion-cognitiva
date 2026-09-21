@@ -898,6 +898,46 @@ problema. Sin excepciones ni ANR en logcat en toda la sesión de pruebas, incluy
 sesiones que corrieron sus 6-12 rondas completas solo por timeout (buena prueba de
 estrés del temporizador nuevo).
 
+## Fase 2 — fin de las migraciones destructivas de Room (21-sep, mismo día)
+
+Seguía de la auditoría: `NeuroVidaDatabase` estaba en `version = 10`, `exportSchema = false`,
+y usaba `.fallbackToDestructiveMigration()` sin condición desde siempre -- ninguna de las 9
+subidas de versión históricas tuvo jamás una `Migration` real. Cualquier futuro cambio de
+esquema (agregar una columna, una tabla, etc.) habría borrado streaks, scores, rangos ELO e
+historial de partidas de todos los usuarios en producción, sin aviso ni forma de evitarlo.
+
+**Qué se cambió:**
+
+- `exportSchema = true` en `NeuroVidaDatabase`, más `ksp { arg("room.schemaLocation", ...) }`
+  en `app/build.gradle.kts` -- Room ahora deja un JSON por versión en `app/schemas/`
+  (commiteado a git). Esto es la base sin la cual no se puede escribir ni testear una
+  `Migration` real: Room necesita el esquema anterior exacto para saber qué cambió. Se generó
+  `app/schemas/com.example.data.local.NeuroVidaDatabase/10.json` como punto de partida (el
+  esquema actual, versión 10).
+- Se sacó el `.fallbackToDestructiveMigration()` incondicional. Ahora solo se activa en builds
+  **debug** (`BuildConfig.DEBUG`), para no trabar la iteración local mientras se prueba un
+  esquema nuevo. En **release**, si se sube `version` sin agregar la `Migration` correspondiente
+  a un arreglo `MIGRATIONS` en `NeuroVidaDatabase.kt`, la app **crashea** al abrir la base
+  (`IllegalStateException`) en vez de borrar los datos en silencio -- un crash se detecta en QA
+  antes de publicar; una pérdida de datos silenciosa la descubre el usuario después, cuando ya
+  no hay nada que hacer.
+- `androidx.room:room-testing` agregado como `androidTestImplementation` (misma versión que
+  `room-runtime`), listo para cuando exista la primera `Migration` real y haga falta un test con
+  `MigrationTestHelper`.
+
+**Proceso a seguir de acá en adelante cuando haya que cambiar el esquema** (agregar columna,
+tabla, etc.): 1) cambiar la entidad en `Entities.kt`, 2) subir `version` en `NeuroVidaDatabase`,
+3) escribir un `Migration(N, N+1)` real con el SQL de la migración y agregarlo al arreglo
+`MIGRATIONS`, 4) compilar una vez para que Room genere `schemas/<N+1>.json` y comitear ese
+archivo también. Sin el paso 3, el release crashea a propósito (ver arriba) -- es la señal de
+que falta la migración, no un bug nuevo.
+
+**Verificado**: compila limpio (ya sin el warning de deprecación de
+`fallbackToDestructiveMigration()`, que ahora pasa `dropAllTables = true` explícito), y la suite
+de 46 pruebas unitarias sigue en verde -- no había ninguna prueba de Room/migraciones antes de
+esto, así que el conteo no cambia (la primera prueba de migración real se agrega junto con la
+primera `Migration`, cuando Ricardo la necesite).
+
 ## Pendiente / por confirmar con Ricardo
 
 - Firebase: qué partes se van a usar de verdad (`firebase-ai` ya está en las dependencias activas,
