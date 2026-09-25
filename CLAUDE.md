@@ -302,3 +302,10 @@ Pedido de Ricardo: llevar el estilo de la app a los juegos sin que se vuelvan re
 - La PRIMERA partida tras abrir la app sigue siendo arranque en frío (pendiente: pantalla de carga con el estilo de la app). Si Android mata `:unity` en segundo plano por memoria, la siguiente partida arranca en frío (normal).
 - Marca de verificación: `estilo 25-sep · b`.
 - NO compilado el Kotlin acá (sin SDK). Probar en el teléfono: 1) primera partida (lenta, normal); 2) "Continuar" → resultado al instante; 3) otra partida → debe abrir en ~1 s; 4) Atrás a mitad → vuelve y cierra la sesión; 5) Inicio a mitad de partida y volver con el ícono → sigue el juego; 6) Atrás en Hoy → la app pasa a segundo plano (no se ve Unity).
+
+## Pantalla de resultado de la app con el sello (25-sep)
+- `games/GameResultScreen.kt` reescrita ("noche + arcilla", reglas de ui-ux-pro-max): sin tarjetas, sobre el cielo; protagonista único animado = puntaje que cuenta (Fredoka 104sp, relleno sol + contorno y sombra tinta vía `TextStyle.drawStyle = Stroke`), luego 3 estrellas de arcilla con rebote (la del medio más grande) y lluvia de destellos si hay 2-3 estrellas; halo del color del dominio que respira. Debajo: frase según puntaje, fila suelta aciertos · nivel · modo, píldora lima de subida de nivel, liga del juego (`LeagueShield` + "Bronce 3" + trofeos, nuevo parámetro `rank`), avance de la sesión diaria como nodos de arcilla coral, y `ClayButton` sol (Continuar / Siguiente juego) + crema (Jugar de nuevo). Atrás = Continuar. Con "quitar animaciones" del sistema (`ANIMATOR_DURATION_SCALE` = 0) todo aparece quieto.
+- Textos sin promesas de salud (se sacó "fortalece las conexiones sinápticas").
+- `MainActivity`: la pestaña (Hoy/Juegos/...) ya no se compone mientras hay un juego o un resultado encima (con el fondo transparente se veía detrás y podía recibir toques).
+- Vista previa: `tools/previews/pantalla_resultado.py` → `docs/previews/pantalla-resultado.png` (aproximada; el escudo real es el de `LeagueShield`).
+- Kotlin NO compilado acá.

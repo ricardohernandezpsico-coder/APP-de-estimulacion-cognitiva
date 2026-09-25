@@ -117,6 +117,7 @@ fun NeuroVidaApp(viewModel: NeuroVidaViewModel) {
   val activeGame by viewModel.activeGame.collectAsState()
   val lastResult by viewModel.lastResult.collectAsState()
   val dailySession by viewModel.dailySession.collectAsState()
+  val gameRanks by viewModel.gameRanks.collectAsState()
 
   Box(modifier = Modifier.fillMaxSize()) {
     com.example.ui.components.CosmosBackground()
@@ -149,8 +150,9 @@ fun NeuroVidaApp(viewModel: NeuroVidaViewModel) {
             )
           }
       ) {
-        // Content based on tab
-        AnimatedContent(
+        // Content based on tab. Mientras hay un juego o un resultado encima no se compone: esas pantallas van
+        // sobre el cielo transparente (se vería la pestaña detrás) y no deben dejar pasar toques a ella.
+        if (activeGame == null && lastResult == null) AnimatedContent(
           targetState = currentTab,
           transitionSpec = { fadeIn() togetherWith fadeOut() },
           label = "TabTransition"
@@ -190,6 +192,7 @@ fun NeuroVidaApp(viewModel: NeuroVidaViewModel) {
             isDailyFlow = activeGame?.isDailyFlow ?: (dailySession.completedCount in 1..3),
             dailyCompletedCount = dailySession.completedCount,
             dailyTotalCount = 3,
+            rank = gameRanks.firstOrNull { it.gameId == result.gameId },
             onPlayAgain = {
               viewModel.launchGame(result.gameId, customLevel = result.level, customTimed = result.timed)
             },
