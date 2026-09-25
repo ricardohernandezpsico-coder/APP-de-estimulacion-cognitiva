@@ -138,6 +138,23 @@ class NeuroVidaRepository(
   // volver a otorgar el premio si se recalcula).
   private val _claimedChallenges = MutableStateFlow<Set<String>>(emptySet())
 
+  // Ascensos de liga (liga general y de cada juego), para marcarlos en el camino de Hoy. Van en
+  // SharedPreferences y no en Room: son pocos, solo se agregan, y así no hace falta una migración.
+  private val leaguePrefs = context.getSharedPreferences("league_events", Context.MODE_PRIVATE)
+  private val _leagueEvents = MutableStateFlow(decodeLeagueEvents(leaguePrefs.getString("events", null)))
+  val leagueEvents: StateFlow<List<LeagueEvent>> = _leagueEvents.asStateFlow()
+
+  private fun recordLeagueEvents(outcome: RecordOutcome, gameId: String, timestamp: Long) {
+    val new = listOfNotNull(
+      outcome.globalPromotion()?.let { LeagueEvent(timestamp, it.tier, null) },
+      outcome.gamePromotion(gameId)?.let { LeagueEvent(timestamp, it.tier, gameId) }
+    )
+    if (new.isEmpty()) return
+    val all = (_leagueEvents.value + new).takeLast(500)
+    _leagueEvents.value = all
+    leaguePrefs.edit().putString("events", encodeLeagueEvents(all)).apply()
+  }
+
   val weeklyChallengeProgress: StateFlow<List<WeeklyChallengeProgress>> =
     combine(gameHistory, _claimedChallenges) { history, claimed ->
       computeWeeklyProgress(history, claimed, getWeekKey())
@@ -491,13 +508,15 @@ class NeuroVidaRepository(
       _claimedChallenges.value = _claimedChallenges.value + claimId
     }
 
-    RecordOutcome(
+    val outcome = RecordOutcome(
       didLevelUp = didLevelUp,
       gameRatingBefore = currentProgress.eloRating,
       gameRatingAfter = newRating,
       globalBefore = globalOf(ratingsBefore),
       globalAfter = globalOf(ratingsAfter)
     )
+    recordLeagueEvents(outcome, result.gameId, result.timestamp)
+    outcome
   }
 
   // Cuánto sube o baja el ELO de un juego tras una partida. A mayor tier, más

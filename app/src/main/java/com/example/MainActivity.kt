@@ -120,6 +120,7 @@ fun NeuroVidaApp(viewModel: NeuroVidaViewModel) {
   val dailySession by viewModel.dailySession.collectAsState()
   val gameRanks by viewModel.gameRanks.collectAsState()
   val promotion by viewModel.promotion.collectAsState()
+  val streak by viewModel.currentStreak.collectAsState()
 
   Box(modifier = Modifier.fillMaxSize()) {
     com.example.ui.components.CosmosBackground()
@@ -211,7 +212,7 @@ fun NeuroVidaApp(viewModel: NeuroVidaViewModel) {
         // Ascenso de liga: se celebra encima del resultado (después de que se vio el puntaje). No depende de que
         // el resultado siga abierto: si el usuario lo cerró antes, la celebración aparece igual sobre la pestaña.
         promotion?.let { p ->
-          com.example.ui.components.LeaguePromotionOverlay(promotion = p, onDismiss = { viewModel.dismissPromotion() })
+          com.example.ui.components.LeaguePromotionOverlay(promotion = p, onDismiss = { viewModel.dismissPromotion() }, streak = streak)
         }
       }
     }

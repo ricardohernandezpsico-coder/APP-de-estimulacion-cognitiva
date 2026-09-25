@@ -30,6 +30,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -67,7 +68,7 @@ import kotlin.random.Random
  * recompensa más fuerte de la app, así que va a pantalla completa y con una sola idea: el escudo viejo tiembla y
  * estalla, el nuevo aparece con rebote sobre rayos de luz del color de la liga y una lluvia de destellos.
  * Debajo: la liga nueva, dónde (liga general o de un juego), trofeos y la próxima meta; "¡Genial!" y "Compartir"
- * (hoja de compartir de Android con un texto corto).
+ * (imagen de [ShareCard] + texto corto por la hoja de compartir de Android).
  *
  * Aparece después de [delayMs] para que primero se vea el puntaje de la partida. Atrás = "¡Genial!". Con
  * "quitar animaciones" del sistema aparece quieta, ya con el escudo nuevo.
@@ -76,9 +77,11 @@ import kotlin.random.Random
 fun LeaguePromotionOverlay(
   promotion: LeaguePromotion,
   onDismiss: () -> Unit,
+  streak: Int = 0,
   delayMs: Long = 1700L
 ) {
   val context = LocalContext.current
+  val scope = rememberCoroutineScope()
   val haptics = LocalHapticFeedback.current
   val reduceMotion = remember {
     Settings.Global.getFloat(context.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f
@@ -277,10 +280,26 @@ fun LeaguePromotionOverlay(
           color = Clay.Cream,
           onClick = {
             val where = if (game != null) " en ${game.title}" else ""
-            val send = Intent(Intent.ACTION_SEND)
-              .setType("text/plain")
-              .putExtra(Intent.EXTRA_TEXT, "¡Subí a la liga ${promotion.tier.tierName}$where en NeuroVida!")
-            context.startActivity(Intent.createChooser(send, "Compartir"))
+            val text = "¡Subí a la liga ${promotion.tier.tierName}$where en NeuroVida!"
+            scope.launch {
+              try {
+                ShareCard.share(
+                  context,
+                  ShareCard.Content(
+                    headline = "Subí a ${promotion.tier.tierName}",
+                    subtitle = if (game != null) "en ${game.title}" else "Mi liga general",
+                    tier = promotion.tier,
+                    rating = promotion.rating,
+                    streak = streak
+                  ),
+                  text
+                )
+              } catch (e: Exception) {
+                // Si la imagen falla, se comparte al menos el texto.
+                val send = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, text)
+                context.startActivity(Intent.createChooser(send, "Compartir"))
+              }
+            }
           }
         )
       }

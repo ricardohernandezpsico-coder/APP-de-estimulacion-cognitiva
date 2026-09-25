@@ -68,6 +68,9 @@ class NeuroVidaViewModel(application: Application) : AndroidViewModel(applicatio
   }.stateIn(viewModelScope, SharingStarted.Eagerly, GameRegistry.allGames.map { GameRankInfo(it.id, 0) })
   val dailySession = repository.dailySession
 
+  /** Ascensos de liga guardados (para marcarlos en el camino de Hoy). */
+  val leagueEvents = repository.leagueEvents
+
   /** Nivel (0..1) por juego para Progreso: rating del DDA comun; en Secuencia/Parejas (motores propios) se
    *  aproxima con el nivel 1-5 si ya se jugaron; null = sin medir. */
   val gameLevelsForProgress: StateFlow<Map<String, Float?>> = combine(

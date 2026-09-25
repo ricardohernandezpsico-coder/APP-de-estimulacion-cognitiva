@@ -284,14 +284,18 @@ data class RecordOutcome(
   val globalAfter: Int
 ) {
   /** Ascenso de liga para celebrar: primero la liga general (más rara y más importante), si no la del juego. */
-  fun promotion(gameId: String): LeaguePromotion? {
-    val gBefore = RankTier.fromRating(globalBefore)
-    val gAfter = RankTier.fromRating(globalAfter)
-    if (gAfter.ordinal > gBefore.ordinal) return LeaguePromotion(gAfter, gBefore, gameId = null, rating = globalAfter)
+  fun promotion(gameId: String): LeaguePromotion? = globalPromotion() ?: gamePromotion(gameId)
+
+  fun globalPromotion(): LeaguePromotion? {
+    val before = RankTier.fromRating(globalBefore)
+    val after = RankTier.fromRating(globalAfter)
+    return if (after.ordinal > before.ordinal) LeaguePromotion(after, before, gameId = null, rating = globalAfter) else null
+  }
+
+  fun gamePromotion(gameId: String): LeaguePromotion? {
     val before = RankTier.fromRating(gameRatingBefore)
     val after = RankTier.fromRating(gameRatingAfter)
-    if (after.ordinal > before.ordinal) return LeaguePromotion(after, before, gameId = gameId, rating = gameRatingAfter)
-    return null
+    return if (after.ordinal > before.ordinal) LeaguePromotion(after, before, gameId = gameId, rating = gameRatingAfter) else null
   }
 }
 

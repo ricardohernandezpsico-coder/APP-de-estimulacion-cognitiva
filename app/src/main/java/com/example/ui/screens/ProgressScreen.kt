@@ -1,5 +1,10 @@
 package com.example.ui.screens
 
+import androidx.compose.material3.minimumInteractiveComponentSize
+import androidx.compose.material.icons.filled.Share
+import kotlinx.coroutines.launch
+import androidx.compose.ui.platform.testTag
+import androidx.compose.foundation.clickable
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -70,6 +75,9 @@ fun ProgressScreen(
   val currentLang = LocalAppLanguage.current
   val dateFormatter = remember { SimpleDateFormat("dd MMM, HH:mm", Locale.getDefault()) }
   var showMore by remember { mutableStateOf(false) }
+  val streak by viewModel.currentStreak.collectAsState()
+  val context = androidx.compose.ui.platform.LocalContext.current
+  val shareScope = androidx.compose.runtime.rememberCoroutineScope()
 
   val avg = if (gameRanks.isEmpty()) 0 else gameRanks.sumOf { it.rating } / gameRanks.size
   val tier = RankTier.fromRating(avg)
@@ -87,6 +95,37 @@ fun ProgressScreen(
         Text("Tu liga", color = OnNight, fontSize = 28.sp, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(8.dp))
         LeagueHero(tier = tier, rating = avg, progress = prog, index = overallIndex(levels))
+        Spacer(Modifier.height(14.dp))
+        // Compartir la liga general como imagen (misma tarjeta que al ascender).
+        com.example.ui.theme.ClayPill(
+          text = "Compartir mi liga",
+          color = com.example.ui.theme.Clay.Sun,
+          icon = androidx.compose.material.icons.Icons.Default.Share,
+          modifier = Modifier
+            .align(Alignment.CenterHorizontally)
+            .minimumInteractiveComponentSize() // área de toque de 48 dp aunque la píldora sea más baja
+            .clip(androidx.compose.foundation.shape.RoundedCornerShape(50))
+            .clickable {
+              shareScope.launch {
+                try {
+                  com.example.ui.components.ShareCard.share(
+                    context,
+                    com.example.ui.components.ShareCard.Content(
+                      headline = "Estoy en liga ${tier.tierName}",
+                      subtitle = "Mi liga general",
+                      tier = tier,
+                      rating = avg,
+                      streak = streak
+                    ),
+                    "¡Estoy en la liga ${tier.tierName} de NeuroVida!"
+                  )
+                } catch (e: Exception) {
+                  android.util.Log.e("ProgressScreen", "No se pudo compartir la liga", e)
+                }
+              }
+            }
+            .testTag("btn_share_league")
+        )
       }
     }
 
