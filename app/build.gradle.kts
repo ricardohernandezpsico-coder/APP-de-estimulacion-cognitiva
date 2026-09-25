@@ -79,6 +79,8 @@ dependencies {
   // Fase 1 del roadmap de migración a Unity (piloto: Secuencia Lumínica) -- ver
   // NeuroVida/CLAUDE.md y unity/README.md.
   implementation(project(":unityLibrary"))
+  // unity-classes.jar es "implementation" dentro de unityLibrary y no se ve desde la app: se agrega solo para compilar (UnityPlayer)
+  compileOnly(files("../unity/AndroidExport/unityLibrary/libs/unity-classes.jar"))
   implementation(platform(libs.androidx.compose.bom))
   implementation(platform(libs.firebase.bom))
   // implementation(libs.accompanist.permissions)

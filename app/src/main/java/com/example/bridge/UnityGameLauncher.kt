@@ -5,7 +5,7 @@ import android.content.Intent
 import com.example.model.AgeBand
 import com.squareup.moshi.JsonClass
 import com.squareup.moshi.Moshi
-import com.unity3d.player.appui.AppUIGameActivity
+import com.unity3d.player.UnityPlayerGameActivity
 
 /**
  * Lanza el piloto de Secuencia Lumínica en Unity (Fase 1 del roadmap, ver
@@ -199,6 +199,6 @@ object UnityGameLauncher {
     )
     val json = adapter.toJson(config)
 
-    return Intent(context, AppUIGameActivity::class.java).putExtra(EXTRA_CONFIG_JSON, json)
+    return Intent(context, UnityPlayerGameActivity::class.java).putExtra(EXTRA_CONFIG_JSON, json)
   }
 }

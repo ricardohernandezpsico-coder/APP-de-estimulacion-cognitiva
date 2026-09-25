@@ -44,7 +44,7 @@
              valor distinto al del host. screenOrientation se fija en vertical: los 9 juegos arman su interfaz para
              1080x1920 vertical y al girar se desarmaban (el export de Unity traía autorrotación). -->
         <activity
-            android:name="com.unity3d.player.appui.AppUIGameActivity"
+            android:name="com.unity3d.player.UnityPlayerGameActivity"
             android:exported="false"
             android:process=":unity"
             android:screenOrientation="portrait"
