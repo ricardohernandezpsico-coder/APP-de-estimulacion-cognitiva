@@ -28,6 +28,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.BlendMode
@@ -121,6 +125,10 @@ fun NeuroVidaApp(viewModel: NeuroVidaViewModel) {
   val gameRanks by viewModel.gameRanks.collectAsState()
   val promotion by viewModel.promotion.collectAsState()
   val streak by viewModel.currentStreak.collectAsState()
+  val achievementQueue by viewModel.achievementQueue.collectAsState()
+  val achievementUnlocks by viewModel.achievementUnlocks.collectAsState()
+  // Tras la primera celebración de una partida, las siguientes (más logros) aparecen enseguida.
+  var celebratedOne by remember(lastResult) { mutableStateOf(false) }
 
   Box(modifier = Modifier.fillMaxSize()) {
     com.example.ui.components.CosmosBackground()
@@ -131,7 +139,7 @@ fun NeuroVidaApp(viewModel: NeuroVidaViewModel) {
       containerColor = androidx.compose.ui.graphics.Color.Transparent,
       bottomBar = {
         // Show bottom bar only when not playing a game or looking at results
-        if (activeGame == null && lastResult == null && promotion == null) {
+        if (activeGame == null && lastResult == null && promotion == null && achievementQueue.isEmpty()) {
           com.example.ui.components.NeuroNavBar(
             current = currentTab,
             onSelect = { viewModel.setTab(it) },
@@ -212,7 +220,28 @@ fun NeuroVidaApp(viewModel: NeuroVidaViewModel) {
         // Ascenso de liga: se celebra encima del resultado (después de que se vio el puntaje). No depende de que
         // el resultado siga abierto: si el usuario lo cerró antes, la celebración aparece igual sobre la pestaña.
         promotion?.let { p ->
-          com.example.ui.components.LeaguePromotionOverlay(promotion = p, onDismiss = { viewModel.dismissPromotion() }, streak = streak)
+          com.example.ui.components.LeaguePromotionOverlay(
+            promotion = p,
+            onDismiss = { celebratedOne = true; viewModel.dismissPromotion() },
+            streak = streak
+          )
+        }
+
+        // Logros nuevos: después del ascenso (si lo hubo), de a uno.
+        if (promotion == null) achievementQueue.firstOrNull()?.let { id ->
+          val def = com.example.data.Achievements.byId(id)
+          if (def == null) {
+            LaunchedEffect(id) { viewModel.dismissAchievement() }
+          } else {
+            com.example.ui.components.AchievementOverlay(
+              def = def,
+              unlockedCount = achievementUnlocks.size,
+              totalCount = com.example.data.Achievements.all.size,
+              streak = streak,
+              onDismiss = { celebratedOne = true; viewModel.dismissAchievement() },
+              delayMs = if (celebratedOne) 250L else 1700L
+            )
+          }
         }
       }
     }

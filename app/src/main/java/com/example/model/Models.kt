@@ -281,7 +281,9 @@ data class RecordOutcome(
   val gameRatingBefore: Int,
   val gameRatingAfter: Int,
   val globalBefore: Int,
-  val globalAfter: Int
+  val globalAfter: Int,
+  /** Logros conseguidos con esta partida (ids de [com.example.data.Achievements]), en orden de catálogo. */
+  val newAchievements: List<String> = emptyList()
 ) {
   /** Ascenso de liga para celebrar: primero la liga general (más rara y más importante), si no la del juego. */
   fun promotion(gameId: String): LeaguePromotion? = globalPromotion() ?: gamePromotion(gameId)

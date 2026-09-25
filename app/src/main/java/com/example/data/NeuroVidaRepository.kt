@@ -144,6 +144,41 @@ class NeuroVidaRepository(
   private val _leagueEvents = MutableStateFlow(decodeLeagueEvents(leaguePrefs.getString("events", null)))
   val leagueEvents: StateFlow<List<LeagueEvent>> = _leagueEvents.asStateFlow()
 
+  // Logros conseguidos (id -> cuándo). Se derivan del historial y los trofeos (ver Achievements.kt); acá solo
+  // se recuerda cuáles ya se celebraron.
+  private val achievementPrefs = context.getSharedPreferences("achievements", Context.MODE_PRIVATE)
+  private val _achievementUnlocks = MutableStateFlow(decodeUnlocks(achievementPrefs.getString("unlocks", null)))
+  val achievementUnlocks: StateFlow<Map<String, Long>> = _achievementUnlocks.asStateFlow()
+
+  private fun saveUnlocks(unlocks: Map<String, Long>) {
+    _achievementUnlocks.value = unlocks
+    achievementPrefs.edit().putString("unlocks", encodeUnlocks(unlocks)).apply()
+  }
+
+  /**
+   * La primera vez (app actualizada con historial previo) lo ya conseguido se registra SIN celebrar: si no, la
+   * próxima partida dispararía una lluvia de logros viejos. Debe correr antes de guardar una partida nueva.
+   */
+  private suspend fun seedAchievementsIfNeeded() {
+    if (achievementPrefs.getBoolean("seeded", false)) return
+    val stats = computeAchievementStats(
+      gameResultDao.getAllResultsSync().map { it.toDomain() },
+      gameProgressDao.getAllProgressSync().associate { it.gameId to it.eloRating }
+    )
+    val now = System.currentTimeMillis()
+    saveUnlocks(Achievements.unlocked(stats).associateWith { now } + _achievementUnlocks.value)
+    achievementPrefs.edit().putBoolean("seeded", true).apply()
+  }
+
+  /** Registra los logros nuevos con estas cifras y los devuelve (en orden de catálogo). */
+  private fun unlockNewAchievements(stats: AchievementStats, timestamp: Long): List<String> {
+    val known = _achievementUnlocks.value
+    val got = Achievements.unlocked(stats)
+    val new = Achievements.all.map { it.id }.filter { it in got && it !in known }
+    if (new.isNotEmpty()) saveUnlocks(known + new.associateWith { timestamp })
+    return new
+  }
+
   private fun recordLeagueEvents(outcome: RecordOutcome, gameId: String, timestamp: Long) {
     val new = listOfNotNull(
       outcome.globalPromotion()?.let { LeagueEvent(timestamp, it.tier, null) },
@@ -217,6 +252,7 @@ class NeuroVidaRepository(
     repositoryScope.launch {
       initializeDatabaseDefaults()
       observeDailySession()
+      seedAchievementsIfNeeded()
     }
   }
 
@@ -414,6 +450,7 @@ class NeuroVidaRepository(
   }
 
   suspend fun recordGameResult(result: GamePlayResult): RecordOutcome = withContext(Dispatchers.IO) {
+    seedAchievementsIfNeeded() // antes de guardar: lo que consiga ESTA partida sí se celebra
     // 1. Add to Room game_results table
     gameResultDao.insert(result.toEntity())
 
@@ -513,7 +550,8 @@ class NeuroVidaRepository(
       gameRatingBefore = currentProgress.eloRating,
       gameRatingAfter = newRating,
       globalBefore = globalOf(ratingsBefore),
-      globalAfter = globalOf(ratingsAfter)
+      globalAfter = globalOf(ratingsAfter),
+      newAchievements = unlockNewAchievements(computeAchievementStats(allResults, ratingsAfter), result.timestamp)
     )
     recordLeagueEvents(outcome, result.gameId, result.timestamp)
     outcome

@@ -1124,6 +1124,18 @@ fun SettingsScreen(
       Spacer(modifier = Modifier.height(12.dp))
 
       OutlinedButton(
+        onClick = { viewModel.debugShowAchievement() },
+        shape = RoundedCornerShape(14.dp),
+        modifier = Modifier
+          .fillMaxWidth()
+          .testTag("btn_debug_achievement")
+      ) {
+        Text("[Debug] Ver celebración de logro")
+      }
+
+      Spacer(modifier = Modifier.height(12.dp))
+
+      OutlinedButton(
         onClick = {
           com.example.bridge.UnityGameLauncher.launchSecuenciaLuminica(
             context = context,

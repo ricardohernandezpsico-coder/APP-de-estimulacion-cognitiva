@@ -71,6 +71,12 @@ class NeuroVidaViewModel(application: Application) : AndroidViewModel(applicatio
   /** Ascensos de liga guardados (para marcarlos en el camino de Hoy). */
   val leagueEvents = repository.leagueEvents
 
+  /** Logros conseguidos (id -> cuándo) y las cifras con que se calculan (para el avance "4/7" de los bloqueados). */
+  val achievementUnlocks = repository.achievementUnlocks
+  val achievementStats: StateFlow<com.example.data.AchievementStats> = combine(gameHistory, gameRanks) { hist, ranks ->
+    com.example.data.computeAchievementStats(hist, ranks.associate { it.gameId to it.rating })
+  }.stateIn(viewModelScope, SharingStarted.Eagerly, com.example.data.computeAchievementStats(emptyList(), emptyMap()))
+
   /** Nivel (0..1) por juego para Progreso: rating del DDA comun; en Secuencia/Parejas (motores propios) se
    *  aproxima con el nivel 1-5 si ya se jugaron; null = sin medir. */
   val gameLevelsForProgress: StateFlow<Map<String, Float?>> = combine(
@@ -102,6 +108,19 @@ class NeuroVidaViewModel(application: Application) : AndroidViewModel(applicatio
 
   fun dismissPromotion() {
     _promotion.value = null
+  }
+
+  /** Logros conseguidos en las últimas partidas y todavía no celebrados (se muestran de a uno). */
+  private val _achievementQueue = MutableStateFlow<List<String>>(emptyList())
+  val achievementQueue: StateFlow<List<String>> = _achievementQueue.asStateFlow()
+
+  fun dismissAchievement() {
+    _achievementQueue.value = _achievementQueue.value.drop(1)
+  }
+
+  /** Solo depuración (botón en Ajustes): muestra la celebración de un logro. */
+  fun debugShowAchievement() {
+    _achievementQueue.value = _achievementQueue.value + "racha_7"
   }
 
   /** Solo depuración (botón en Ajustes): muestra la celebración sin tener que ganar 250 trofeos. */
@@ -241,6 +260,7 @@ class NeuroVidaViewModel(application: Application) : AndroidViewModel(applicatio
       val outcome = repository.recordGameResult(result)
       if (current != null && current.gameDef.id == result.gameId) {
         _promotion.value = outcome.promotion(result.gameId)
+        _achievementQueue.value = _achievementQueue.value + outcome.newAchievements
         _lastResult.value = Pair(result, outcome.didLevelUp)
         _activeGame.value = null
         triggerHapticFeedback(if (result.score >= 70) HapticType.SUCCESS else HapticType.LIGHT)
@@ -346,6 +366,7 @@ class NeuroVidaViewModel(application: Application) : AndroidViewModel(applicatio
     viewModelScope.launch {
       val outcome = repository.recordGameResult(result)
       _promotion.value = outcome.promotion(result.gameId)
+      _achievementQueue.value = _achievementQueue.value + outcome.newAchievements
       _lastResult.value = Pair(result, outcome.didLevelUp)
       _activeGame.value = null
     }

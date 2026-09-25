@@ -114,8 +114,7 @@ fun ProgressScreen(
                       headline = "Estoy en liga ${tier.tierName}",
                       subtitle = "Mi liga general",
                       tier = tier,
-                      rating = avg,
-                      streak = streak
+                      stats = com.example.ui.components.ShareCard.Content.trophiesAndStreak(avg, streak)
                     ),
                     "¡Estoy en la liga ${tier.tierName} de NeuroVida!"
                   )

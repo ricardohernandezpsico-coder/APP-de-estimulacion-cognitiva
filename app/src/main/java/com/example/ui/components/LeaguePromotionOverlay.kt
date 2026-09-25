@@ -289,8 +289,7 @@ fun LeaguePromotionOverlay(
                     headline = "Subí a ${promotion.tier.tierName}",
                     subtitle = if (game != null) "en ${game.title}" else "Mi liga general",
                     tier = promotion.tier,
-                    rating = promotion.rating,
-                    streak = streak
+                    stats = ShareCard.Content.trophiesAndStreak(promotion.rating, streak)
                   ),
                   text
                 )
@@ -307,7 +306,7 @@ fun LeaguePromotionOverlay(
   }
 }
 
-private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawFourPointStar(c: Offset, r: Float, color: Color) {
+internal fun androidx.compose.ui.graphics.drawscope.DrawScope.drawFourPointStar(c: Offset, r: Float, color: Color) {
   val p = Path().apply {
     moveTo(c.x, c.y - r)
     quadraticBezierTo(c.x, c.y, c.x + r, c.y)

@@ -16,6 +16,7 @@ import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.drawscope.CanvasDrawScope
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.inset
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
@@ -27,6 +28,7 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
+import com.example.data.AchievementDef
 import com.example.model.RankTier
 import com.example.ui.theme.Clay
 import com.example.ui.theme.FredokaFamily
@@ -40,18 +42,26 @@ import kotlin.random.Random
 
 /**
  * Tarjeta para compartir (imagen 1080x1920, formato de historia) con el sello de la app: cielo nocturno con
- * estrellas, el escudo de la liga sobre rayos de su color, el titular ("Subí a Plata"), dónde, trofeos y racha,
- * y la marca. Se dibuja fuera de pantalla con las mismas funciones que la app ([drawLeagueShield], Fredoka), así
+ * estrellas, el escudo de la liga (o la medalla de un logro) sobre rayos de su color, el titular ("Subí a Plata",
+ * "Una semana"), el detalle, hasta dos cifras (trofeos, racha, logros) y la marca. Se dibuja fuera de pantalla con las mismas funciones que la app ([drawLeagueShield], Fredoka), así
  * se ve igual que adentro, y se comparte con la hoja de compartir de Android (WhatsApp, Instagram, etc.).
  */
 object ShareCard {
   data class Content(
-    val headline: String,       // "Subí a Plata" / "Estoy en liga Oro"
-    val subtitle: String,       // "en Secuencia Lumínica" / "Mi liga general"
-    val tier: RankTier,
-    val rating: Int,
-    val streak: Int
-  )
+    val headline: String,       // "Subí a Plata" / "Estoy en liga Oro" / "Una semana"
+    val subtitle: String,       // "en Secuencia Lumínica" / "Mi liga general" / descripción del logro
+    val tier: RankTier? = null, // escudo de liga...
+    val achievement: AchievementDef? = null, // ...o medalla de logro
+    val stats: List<Pair<String, String>> = emptyList() // cifra -> rótulo ("255" -> "trofeos"), máx. 2
+  ) {
+    companion object {
+      /** Cifras de siempre: trofeos y, si hay, racha. */
+      fun trophiesAndStreak(rating: Int, streak: Int): List<Pair<String, String>> = buildList {
+        add("$rating" to "trofeos")
+        if (streak > 0) add("$streak" to if (streak == 1) "día de racha" else "días de racha")
+      }
+    }
+  }
 
   private const val W = 1080
   private const val H = 1920
@@ -88,7 +98,8 @@ object ShareCard {
   private fun DrawScope.drawCard(content: Content, measurer: TextMeasurer) {
     val w = size.width
     val h = size.height
-    val pal = content.tier.palette()
+    val accentLight = content.tier?.palette()?.light ?: content.achievement?.medalColor()?.let { lerp(it, Color.White, 0.45f) } ?: Color.White
+    val accentGlow = content.tier?.palette()?.glow ?: content.achievement?.medalColor() ?: Clay.Sky
 
     // Cielo nocturno de la app + nebulosas celeste y coral
     drawRect(Brush.verticalGradient(listOf(Color(0xFF101A58), Color(0xFF080E3A), Color(0xFF04061C))))
@@ -114,7 +125,7 @@ object ShareCard {
     val shieldW = 470f
     val shieldH = shieldW * 1.12f
     val c = Offset(w / 2f, 720f)
-    glow(c, 560f, pal.glow.copy(alpha = 0.55f))
+    glow(c, 560f, accentGlow.copy(alpha = 0.55f))
     val rays = 14
     for (i in 0 until rays) {
       val a = (i * 360f / rays - 90f) * PI.toFloat() / 180f
@@ -126,16 +137,25 @@ object ShareCard {
         lineTo(c.x + cos(a + half) * reach, c.y + sin(a + half) * reach)
         close()
       }
-      drawPath(ray, Brush.radialGradient(listOf(pal.light.copy(alpha = 0.30f), Color.Transparent), c, reach))
+      drawPath(ray, Brush.radialGradient(listOf(accentLight.copy(alpha = 0.30f), Color.Transparent), c, reach))
     }
-    inset(c.x - shieldW / 2f, c.y - shieldH / 2f, w - (c.x + shieldW / 2f), h - (c.y + shieldH / 2f)) {
-      drawLeagueShield(content.tier, pips = 1)
+    val tier = content.tier
+    val achievement = content.achievement
+    if (tier != null) {
+      inset(c.x - shieldW / 2f, c.y - shieldH / 2f, w - (c.x + shieldW / 2f), h - (c.y + shieldH / 2f)) {
+        drawLeagueShield(tier, pips = 1)
+      }
+    } else if (achievement != null) {
+      val m = 560f
+      inset(c.x - m / 2f, c.y - m / 2f, w - (c.x + m / 2f), h - (c.y + m / 2f)) {
+        drawAchievementMedal(achievement, unlocked = true, measurer = measurer)
+      }
     }
 
     // Titular, dónde y cifras
     val headline = TextStyle(
       fontFamily = FredokaFamily, fontWeight = FontWeight.Bold, fontSize = 116.sp, lineHeight = 124.sp,
-      color = pal.light, textAlign = TextAlign.Center, shadow = Shadow(Clay.Ink, Offset(0f, 10f), 0f)
+      color = accentLight, textAlign = TextAlign.Center, shadow = Shadow(Clay.Ink, Offset(0f, 10f), 0f)
     )
     var y = centered(measurer, content.headline, headline, 1070f)
     val sub = TextStyle(fontFamily = FredokaFamily, fontWeight = FontWeight.SemiBold, fontSize = 54.sp, color = Color.White, textAlign = TextAlign.Center)
@@ -143,12 +163,9 @@ object ShareCard {
 
     val num = TextStyle(fontFamily = FredokaFamily, fontWeight = FontWeight.Bold, fontSize = 92.sp, color = Clay.Sun, textAlign = TextAlign.Center)
     val lbl = TextStyle(fontFamily = FredokaFamily, fontSize = 38.sp, color = Color(0xFFB4BFEA), textAlign = TextAlign.Center)
-    val stats = buildList {
-      add("${content.rating}" to "trofeos")
-      if (content.streak > 0) add("${content.streak}" to if (content.streak == 1) "día de racha" else "días de racha")
-    }
+    val stats = content.stats.take(2)
     val statsTop = y + 110f
-    val colW = w / stats.size
+    val colW = w / stats.size.coerceAtLeast(1)
     stats.forEachIndexed { i, (n, l) ->
       val left = colW * i
       val nb = measurer.measure(n, num, constraints = Constraints.fixedWidth(colW.toInt()))
