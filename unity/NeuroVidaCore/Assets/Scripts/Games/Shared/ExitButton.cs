@@ -6,8 +6,14 @@ using NeuroVida.Games.Secuencia;
 
 namespace NeuroVida.Games.Shared
 {
-    /// <summary>Botón "Continuar" que aparece al terminar la partida y devuelve al usuario a la app
-    /// (cierra la pantalla de Unity). Compartido por los 9 juegos.</summary>
+    /// <summary>
+    /// Cierre de partida común a los 9 juegos. Al terminar ya no se muestra un resultado de Unity y después otro
+    /// de la app (dos pantallas y un toque de más): se ve un momento breve "¡Listo!" con las estrellas acelerando
+    /// a hiperespacio (espejo del "¡Ya!" de la cuenta regresiva), suena el final común (<see cref="GameFeel.Finish"/>)
+    /// y la app se abre sola en su pantalla de resultado, que es la completa (estrellas, liga, logros).
+    /// El botón "Continuar" queda como respaldo: aparece solo si la vuelta automática no ocurrió (Editor, pruebas o
+    /// un error del puente), junto al panel de resultado del juego que sigue armándose debajo.
+    /// </summary>
     public sealed class ExitButton
     {
         private readonly GameObject _root;
@@ -55,11 +61,34 @@ namespace NeuroVida.Games.Shared
 
         public void Hide() => _root.SetActive(false);
 
+        /// <summary>Fin de partida: cierre breve y vuelta automática a la app (ver resumen de la clase).</summary>
         public void Show()
+        {
+            _root.SetActive(false);
+            _runner.StartCoroutine(FinishAndReturn());
+        }
+
+        /// <summary>Muestra el botón de respaldo (sin cierre ni vuelta automática).</summary>
+        public void ShowButton()
         {
             _root.SetActive(true);
             _root.transform.SetAsLastSibling(); // por encima de paneles y efectos
             _runner.StartCoroutine(PopIn());
+        }
+
+        private IEnumerator FinishAndReturn()
+        {
+            GameFeel.Finish();
+            var curtain = FinishCurtain.Create(_runner.transform);
+            // Reloj real (no GameClock): la partida ya terminó y este cierre no debe congelarse.
+            yield return curtain.Play(_runner);
+            NativeBridge.CloseGameScreen(); // la app se abre en su pantalla de resultado; Unity recarga la escena
+
+            // Si seguimos acá (Editor, pruebas o el puente falló), se deja ver el resultado del juego y "Continuar".
+            float waited = 0f;
+            while (waited < 1.2f) { waited += Time.unscaledDeltaTime; yield return null; }
+            if (curtain != null) Object.Destroy(curtain.gameObject);
+            ShowButton();
         }
 
         private IEnumerator PopIn()

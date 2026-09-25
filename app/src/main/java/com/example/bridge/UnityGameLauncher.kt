@@ -34,6 +34,9 @@ object UnityGameLauncher {
     val timed: Boolean,
     val age_band: String,
     val sound_enabled: Boolean,
+    // Vibración corta en aciertos importantes, errores y fin de partida (Ajustes > Vibración). Unity la
+    // da por activada si falta (versiones viejas de la app).
+    val haptics_enabled: Boolean = true,
     // DDA común: rating guardado del juego (0..1). `has_dda_rating` evita confundir "sin dato" con 0.
     val has_dda_rating: Boolean = false,
     val dda_rating: Double = 0.0
@@ -200,6 +203,7 @@ object UnityGameLauncher {
         timed = timed,
         age_band = ageBand.name, // "SENIOR"/"ADULT"/"UNDER_18" -- coincide 1:1 con DdaUserProfileConfig.ParseAgeBand en C#
         sound_enabled = soundEnabled,
+        haptics_enabled = com.example.NeuroVidaApplication.instance.repository.userSettings.value.hapticsEnabled,
         has_dda_rating = savedRating >= 0f,
         dda_rating = savedRating.coerceAtLeast(0f).toDouble()
       )

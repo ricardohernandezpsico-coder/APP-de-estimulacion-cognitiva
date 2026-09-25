@@ -63,9 +63,9 @@ namespace NeuroVida.Games.CambioChip
         private bool Endless => _config != null && _config.config.timed;
 
         // UI
-        private RectTransform _safe, _streakPill, _bannerRect, _timerBg, _timerFill, _arenaRect, _fxRect, _chipRect;
-        private Text _titleText, _subText, _streakText, _bannerText, _bannerSub, _chipLabel;
-        private Image _streakDisc, _bannerBg, _bannerDisc, _bannerArrow, _bannerRing, _arenaBorder, _labelBg, _chipImage, _chipArrowImage;
+        private RectTransform _safe, _bannerRect, _timerBg, _timerFill, _arenaRect, _fxRect, _chipRect;
+        private Text _bannerText, _bannerSub, _chipLabel;
+        private Image _bannerBg, _bannerDisc, _bannerArrow, _bannerRing, _arenaBorder, _labelBg, _chipImage, _chipArrowImage;
         private CanvasGroup _arenaGroup, _chipGroup;
         private readonly List<RectTransform> _padRects = new List<RectTransform>();
         private readonly List<Image> _padImages = new List<Image>();
@@ -74,6 +74,7 @@ namespace NeuroVida.Games.CambioChip
         private PhasePill _pill;
         private Toast _toast;
         private ExitButton _exit;
+        private GameHud _hud;
         private CountdownScreen _countdown;
         private Vector2 _arenaRestPos;
         private float _arenaSize;
@@ -152,7 +153,11 @@ namespace NeuroVida.Games.CambioChip
                 _effLevel = _dda.PresentedLevel;
                 yield return StartCoroutine(ResolveTrial(correct));
                 _trialIndex++;
-                if (change == DdaChange.Up) _toast.Show($"Nivel {_dda.Level}", "La regla cambia más seguido", GoodColor, 1.0f);
+                if (change == DdaChange.Up)
+                {
+                    _toast.Show($"Nivel {_dda.Level}", "La regla cambia más seguido", GoodColor, 1.0f);
+                    GameFeel.LevelUp();
+                }
                 else if (change == DdaChange.Down || _dda.Struggling) _toast.Show("Con calma", "Ajustamos la dificultad", AmberColor, 1.0f);
 
                 // Cambio de regla: fijo cada N ensayos o sorpresa según maestría y racha.
@@ -258,7 +263,7 @@ namespace NeuroVida.Games.CambioChip
                 SetStreak(_streak);
                 UpdateHudText();
                 _pill.Set("¡Correcto!", GoodColor);
-                PlayTone(523.25f * Mathf.Pow(2f, Mathf.Min(_streak - 1, 7) * 2f / 12f), 0.3f, 0.2f);
+                GameFeel.Correct(_streak);
                 StartCoroutine(Flash(GoodColor, 0.10f, 0.28f));
                 StartCoroutine(UiFx.SparkBurst(_fxRect, LocalIn(_fxRect, _chipRect), Color.white, 14, 260f, 42f, 0.55f));
                 StartCoroutine(UiFx.RingBurst(_fxRect, LocalIn(_fxRect, _padRects[chosen]), Color.white, 120f, 420f, 0.45f));
@@ -286,7 +291,7 @@ namespace NeuroVida.Games.CambioChip
                 _streak = 0;
                 SetStreak(0);
                 _pill.Set($"Era {ChipContract.DirectionNames[expected]}", AmberColor);
-                PlayTone(196f, 0.32f, 0.2f);
+                GameFeel.Wrong();
                 _chipImage.color = BadColor;
                 _arenaBorder.color = new Color(BadColor.r, BadColor.g, BadColor.b, 0.9f);
                 StartCoroutine(Flash(BadColor, 0.14f, 0.32f));
@@ -330,7 +335,7 @@ namespace NeuroVida.Games.CambioChip
             if (whole <= 5 && whole >= 1 && whole != _lastTickSecond)
             {
                 _lastTickSecond = whole;
-                PlayTone(880f, 0.08f, 0.10f);
+                GameFeel.Tick();
             }
             return left <= 0f;
         }
@@ -362,7 +367,6 @@ namespace NeuroVida.Games.CambioChip
                 }
             };
             NativeBridge.ForwardTelemetryToPlatform(JsonUtility.ToJson(telemetry));
-            PlayTone(659.25f, 0.4f, 0.22f);
             yield break;
         }
 
@@ -509,53 +513,7 @@ namespace NeuroVida.Games.CambioChip
 
         private void BuildHud()
         {
-            var hudGo = new GameObject("Hud");
-            hudGo.transform.SetParent(_safe, false);
-            var hudRect = hudGo.AddComponent<RectTransform>();
-            hudRect.anchorMin = new Vector2(0f, 1f);
-            hudRect.anchorMax = new Vector2(1f, 1f);
-            hudRect.pivot = new Vector2(0.5f, 1f);
-            hudRect.sizeDelta = new Vector2(0f, 190f);
-            hudRect.anchoredPosition = Vector2.zero;
-
-            const float pillW = 300f, pillH = 100f;
-            var pillGo = new GameObject("StreakPill");
-            pillGo.transform.SetParent(hudGo.transform, false);
-            _streakPill = pillGo.AddComponent<RectTransform>();
-            _streakPill.anchorMin = _streakPill.anchorMax = _streakPill.pivot = new Vector2(1f, 1f);
-            _streakPill.sizeDelta = new Vector2(pillW, pillH);
-            _streakPill.anchoredPosition = new Vector2(-MarginU, -30f);
-            var pillImg = pillGo.AddComponent<Image>();
-            pillImg.sprite = RoundedRectSprite.Get(64);
-            pillImg.type = Image.Type.Sliced;
-            pillImg.color = new Color(0f, 0f, 0f, 0.30f);
-            pillImg.raycastTarget = false;
-
-            var discGo = new GameObject("Disc");
-            discGo.transform.SetParent(pillGo.transform, false);
-            var discRect = discGo.AddComponent<RectTransform>();
-            discRect.anchorMin = discRect.anchorMax = new Vector2(0f, 0.5f);
-            discRect.pivot = new Vector2(0.5f, 0.5f);
-            discRect.sizeDelta = new Vector2(52f, 52f);
-            discRect.anchoredPosition = new Vector2(50f, 0f);
-            _streakDisc = discGo.AddComponent<Image>();
-            _streakDisc.sprite = DiscSprite.Get();
-            _streakDisc.raycastTarget = false;
-
-            _streakText = MakeText(pillGo.transform, "StreakText", 58, TextAnchor.MiddleLeft, Color.white, 2f, 0.3f);
-            var sr = _streakText.rectTransform;
-            sr.offsetMin = new Vector2(96f, 0f);
-            sr.offsetMax = new Vector2(-24f, 0f);
-            BestFit(_streakText, 36);
-
-            _titleText = MakeText(hudGo.transform, "Title", 78, TextAnchor.UpperLeft, Color.white, 3f, 0.45f);
-            _subText = MakeText(hudGo.transform, "Sub", 48, TextAnchor.UpperLeft, new Color(1f, 1f, 1f, 0.72f), 2f, 0.35f);
-            float right = MarginU + pillW + 20f;
-            PlaceTopText(_titleText, MarginU, right, -22f, 100f);
-            PlaceTopText(_subText, MarginU, right, -112f, 70f);
-            BestFit(_titleText, 46);
-            BestFit(_subText, 30);
-            _titleText.text = "Cambio de Chip";
+            _hud = new GameHud(_safe, "Cambio de Chip", MarginU, this);
         }
 
         private void BuildBanner()
@@ -915,16 +873,22 @@ namespace NeuroVida.Games.CambioChip
 
         private void UpdateHudText()
         {
-            _subText.text = Endless
-                ? $"Puntos {_points} · Nivel {_effLevel}"
-                : $"Ensayo {_trialIndex + 1} de {ChipContract.TotalTrials} · Nivel {_effLevel}";
+            // Marcador común (GameHud): nivel + puntos que cuentan (Reto) o avance "3 de 12" (Precisión).
+            if (Endless)
+            {
+                _hud.SetLevel(_effLevel);
+                _hud.SetPoints(_points);
+            }
+            else
+            {
+                _hud.SetLevel(_effLevel);
+                _hud.SetInfo($"{_trialIndex + 1} de {ChipContract.TotalTrials}");
+            }
         }
 
         private void SetStreak(int streak)
         {
-            _streakText.text = $"Racha {streak}";
-            _streakDisc.color = streak >= 3 ? AmberColor : new Color(1f, 1f, 1f, 0.30f);
-            if (streak > 0) StartCoroutine(PopRect(_streakPill, 1.12f, 0.22f));
+            _hud.SetStreak(streak);
         }
     }
 }

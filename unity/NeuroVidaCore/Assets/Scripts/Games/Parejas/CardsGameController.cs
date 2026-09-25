@@ -1108,17 +1108,21 @@ namespace NeuroVida.Games.Parejas
         // ---- Audio: tonos simples generados por código (misma síntesis que Secuencia, HarmonicTone) ----
 
         private const float FlipToneHz = 300f;
-        private const float MismatchToneHz = 220f;
+
+        /// <summary>Parejas seguidas sin error: la nota del acierto sube con ellas (sonido común, ver GameFeel).</summary>
+        private int _matchRun;
 
         private void PlayMatchOrMismatchFeedback(bool matched)
         {
             if (matched)
             {
-                PlayTone(659.25f, 0.35f, 0.2f);
+                _matchRun++;
+                GameFeel.Correct(_matchRun);
             }
             else
             {
-                PlayTone(MismatchToneHz, 0.3f, 0.18f);
+                _matchRun = 0;
+                GameFeel.Wrong();
             }
         }
 
@@ -1127,7 +1131,7 @@ namespace NeuroVida.Games.Parejas
             // Mismo desfase de 150ms que Kotlin -- evita que el tono de subida de nivel
             // suene amontonado encima del de acierto/error.
             yield return new WaitForSeconds(0.15f);
-            PlayTone(1046.50f, 0.4f, 0.22f);
+            GameFeel.LevelUp();
         }
 
         private void PlayTone(float hz, float durationSeconds, float volume)

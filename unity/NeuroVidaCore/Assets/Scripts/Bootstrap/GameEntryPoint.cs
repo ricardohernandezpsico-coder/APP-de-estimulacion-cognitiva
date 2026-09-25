@@ -129,6 +129,9 @@ namespace NeuroVida.Bridge
             }
 
             _running = true;
+            // Sonido y vibración comunes de los 9 juegos (ajustes de la app).
+            NeuroVida.Games.Shared.GameFeel.SoundOn = config.config.sound_enabled;
+            NeuroVida.Games.Shared.GameFeel.HapticsOn = config.config.haptics_enabled;
             switch (config.game_id)
             {
                 case SequenceGameController.GameId:

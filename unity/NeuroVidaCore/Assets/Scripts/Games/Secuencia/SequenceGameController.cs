@@ -359,6 +359,7 @@ namespace NeuroVida.Games.Secuencia
                     yield return new WaitForSeconds(0.2f);
                     UpdateHud();
                     _toast.Show($"¡Nivel {_currentLevelIndex}!", PhaseNameFor(_currentLevelIndex), AccentFor(_currentLevelIndex), 1.3f);
+                    GameFeel.LevelUp();
                     hold = 0.9f;
                 }
             }
@@ -1058,19 +1059,22 @@ namespace NeuroVida.Games.Secuencia
 
         private static readonly Color SuccessFlashColor = new Color(0x2F / 255f, 0xBF / 255f, 0x71 / 255f, 0.16f);
         private static readonly Color ErrorFlashColor = new Color(0xEF / 255f, 0x47 / 255f, 0x6F / 255f, 0.16f);
-        private const float ErrorToneHz = 220f; // A3 -- grave y cálido, no un "buzz" de error
+
+        /// <summary>Secuencias seguidas sin error (la nota del acierto sube con ellas; sonido común, ver GameFeel).</summary>
+        private int _feelStreak;
 
         private void PlaySuccessFeedback()
         {
             StartCoroutine(FlashFeedback(SuccessFlashColor));
-            PlayConcordantTone(TilePalette.Get(0).ToneHz);
-            PlayConcordantTone(TilePalette.Get(3).ToneHz); // quinta (Do+Sol) -- "tono armónico combinado"
+            _feelStreak++;
+            GameFeel.Correct(_feelStreak);
         }
 
         private void PlayErrorFeedback()
         {
             StartCoroutine(FlashFeedback(ErrorFlashColor));
-            PlayConcordantTone(ErrorToneHz);
+            _feelStreak = 0;
+            GameFeel.Wrong();
         }
 
         private IEnumerator FlashFeedback(Color peakColor)

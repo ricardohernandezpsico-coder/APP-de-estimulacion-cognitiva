@@ -63,7 +63,7 @@ namespace NeuroVida.Games.RutaTesoro
 
         // UI
         private RectTransform _safe, _boardRect, _timerBg, _timerFill, _fxRect;
-        private Text _titleText, _subText;
+        private GameHud _hud;
         private Image _boardPanel, _timerFillImage;
         private ProgressDots _dots;
         private LivesHud _livesHud;
@@ -197,8 +197,7 @@ namespace NeuroVida.Games.RutaTesoro
             {
                 _cleared++;
                 _pill.Set("¡Ruta completa!", GoodColor);
-                PlayTone(659.25f, 0.3f, 0.2f);
-                StartCoroutine(PlayCelebrationTone());
+                GameFeel.LevelUp(); // ruta completa = arpegio común de logro
                 StartCoroutine(UiFx.SparkBurst(_fxRect, _boardCenter, RevealColor, 22, _boardSize * 0.55f, 54f, 0.8f));
                 StartCoroutine(UiFx.RingBurst(_fxRect, _boardCenter, RevealColor, _boardSize * 0.3f, _boardSize * 1.2f, 0.7f));
                 StartCoroutine(Flash(GoodColor, 0.10f, 0.35f));
@@ -213,7 +212,7 @@ namespace NeuroVida.Games.RutaTesoro
                 _hearts--;
                 _livesHud.SetLives(_hearts);
                 _pill.Set(_result == RoundResult.TimedOut ? "Se acabó el tiempo" : "Se perdió la ruta", AmberColor);
-                PlayTone(196f, 0.4f, 0.2f);
+                GameFeel.Wrong();
                 StartCoroutine(Flash(BadColor, 0.14f, 0.35f));
                 yield return StartCoroutine(RevealMissed());
                 yield return new WaitForSeconds(1.1f);
@@ -259,7 +258,7 @@ namespace NeuroVida.Games.RutaTesoro
                 tile.Mark.gameObject.SetActive(true);
                 StartCoroutine(PopRect(tile.Mark, 1.5f, 0.28f));
                 StartCoroutine(UiFx.Shake(16f, 0.3f, tile.Rect));
-                PlayTone(196f, 0.25f, 0.18f);
+                GameFeel.Wrong();
                 StartCoroutine(Flash(BadColor, 0.08f, 0.22f));
                 int left = TreasureContract.MaxMisses - _misses;
                 _pill.Set(left > 0 ? $"Ahí no · te queda {left} intento" : "Se perdió la ruta", left > 0 ? AmberColor : BadColor);
@@ -355,14 +354,6 @@ namespace NeuroVida.Games.RutaTesoro
             foreach (var tile in _tiles) tile.Rect.localScale = Vector3.one;
         }
 
-        private IEnumerator PlayCelebrationTone()
-        {
-            yield return new WaitForSeconds(0.14f);
-            PlayTone(783.99f, 0.25f, 0.18f);
-            yield return new WaitForSeconds(0.14f);
-            PlayTone(1046.5f, 0.35f, 0.2f);
-        }
-
         private IEnumerator WaveIn()
         {
             int n = _gridN;
@@ -439,7 +430,6 @@ namespace NeuroVida.Games.RutaTesoro
                 }
             };
             NativeBridge.ForwardTelemetryToPlatform(JsonUtility.ToJson(telemetry));
-            PlayTone(659.25f, 0.4f, 0.22f);
             yield break;
         }
 
@@ -536,28 +526,12 @@ namespace NeuroVida.Games.RutaTesoro
 
         private void BuildHud()
         {
-            var hudGo = new GameObject("Hud");
-            hudGo.transform.SetParent(_safe, false);
-            var hudRect = hudGo.AddComponent<RectTransform>();
-            hudRect.anchorMin = new Vector2(0f, 1f);
-            hudRect.anchorMax = new Vector2(1f, 1f);
-            hudRect.pivot = new Vector2(0.5f, 1f);
-            hudRect.sizeDelta = new Vector2(0f, 190f);
-            hudRect.anchoredPosition = Vector2.zero;
-
             float heartU = 26f * UnitsPerDp;
             float livesW = 3f * heartU + 2f * heartU * 0.16f + heartU * 0.44f;
-            _livesHud = new LivesHud(hudGo.transform, this, TreasureContract.Lives,
+            // Marcador común (GameHud) con las vidas a la derecha en lugar de la racha.
+            _hud = new GameHud(_safe, "Ruta del Tesoro", MarginU, this, withStreak: false, rightReserve: livesW + 24f);
+            _livesHud = new LivesHud(_hud.Rect, this, TreasureContract.Lives,
                 alignRight: true, marginU: MarginU, topOffsetU: -26f, heartSizeU: heartU);
-
-            _titleText = MakeText(hudGo.transform, "Title", 78, TextAnchor.UpperLeft, Color.white, 3f, 0.45f);
-            _subText = MakeText(hudGo.transform, "Sub", 48, TextAnchor.UpperLeft, new Color(1f, 1f, 1f, 0.72f), 2f, 0.35f);
-            float right = MarginU + livesW + 24f;
-            PlaceTopText(_titleText, MarginU, right, -22f, 100f);
-            PlaceTopText(_subText, MarginU, right, -112f, 70f);
-            BestFit(_titleText, 46);
-            BestFit(_subText, 30);
-            _titleText.text = "Ruta del Tesoro";
 
             _dots = new ProgressDots(_safe, this, UnitsPerDp, 3);
         }
@@ -727,7 +701,8 @@ namespace NeuroVida.Games.RutaTesoro
 
         private void UpdateHud(TreasureStage spec)
         {
-            _subText.text = $"Nivel {_stage} · Tesoros {_found}/{spec.Treasures}";
+            _hud.SetLevel(_stage);
+            _hud.SetInfo($"Tesoros {_found}/{spec.Treasures}");
         }
 
         private void RebuildDotsIfNeeded() { }

@@ -68,14 +68,14 @@ namespace NeuroVida.Games.Series
         private bool Endless => _config != null && _config.config.timed;
 
         // UI
-        private RectTransform _safe, _streakPill, _bannerRect, _timerBg, _timerFill, _fxRect, _rowRect, _optionsRoot;
-        private Text _titleText, _subText, _streakText;
-        private Image _streakDisc, _timerFillImage, _lensRing, _bannerImage;
+        private RectTransform _safe, _bannerRect, _timerBg, _timerFill, _fxRect, _rowRect, _optionsRoot;
+                private Image _timerFillImage, _lensRing, _bannerImage;
         private Text _bannerText;
         private ProgressDots _dots;
         private PhasePill _pill;
         private Toast _toast;
         private ExitButton _exit;
+        private GameHud _hud;
         private CountdownScreen _countdown;
         private const int MaxTokens = 7; // hasta 6 términos + la ficha "?"
         private readonly Token[] _tokens = new Token[MaxTokens];
@@ -261,7 +261,7 @@ namespace NeuroVida.Games.Series
                 UpdateHudText();
                 _optionImages[chosen].color = GoodColor;
                 SetBanner(_item.Rule, GoodColor, 0.45f);
-                PlayTone(523.25f * Mathf.Pow(2f, Mathf.Min(_streak - 1, 7) * 2f / 12f), 0.3f, 0.2f);
+                GameFeel.Correct(_streak);
                 StartCoroutine(Flash(GoodColor, 0.10f, 0.28f));
                 StartCoroutine(UiFx.SparkBurst(_fxRect, LocalIn(_fxRect, answerToken.Rect), Color.white, 14, 260f, 42f, 0.55f));
                 StartCoroutine(UiFx.RingBurst(_fxRect, LocalIn(_fxRect, _optionRects[chosen]), Color.white, 120f, 420f, 0.45f));
@@ -270,7 +270,7 @@ namespace NeuroVida.Games.Series
                 {
                     UpdateHudText();
                     _toast.Show($"Nivel {_effLevel}", "Aparecen patrones nuevos", Accent, 1.1f);
-                    PlayTone(1046.5f, 0.35f, 0.2f);
+                    GameFeel.LevelUp();
                 }
                 else if (_streak == 3 || _streak == 6 || _streak == 10)
                 {
@@ -289,7 +289,7 @@ namespace NeuroVida.Games.Series
                 }
                 _optionImages[chosen].color = BadColor;
                 SetBanner(_item.Rule, AmberColor, 0.40f);
-                PlayTone(196f, 0.32f, 0.2f);
+                GameFeel.Wrong();
                 StartCoroutine(Flash(BadColor, 0.14f, 0.32f));
                 StartCoroutine(UiFx.Shake(20f, 0.4f, _optionRects[chosen]));
                 for (int i = 0; i < 4; i++)
@@ -348,7 +348,7 @@ namespace NeuroVida.Games.Series
             if (whole <= 5 && whole >= 1 && whole != _lastTickSecond)
             {
                 _lastTickSecond = whole;
-                PlayTone(880f, 0.08f, 0.10f);
+                GameFeel.Tick();
             }
             return left <= 0f;
         }
@@ -379,7 +379,6 @@ namespace NeuroVida.Games.Series
                 }
             };
             NativeBridge.ForwardTelemetryToPlatform(JsonUtility.ToJson(telemetry));
-            PlayTone(659.25f, 0.4f, 0.22f);
             yield break;
         }
 
@@ -456,53 +455,7 @@ namespace NeuroVida.Games.Series
 
         private void BuildHud()
         {
-            var hudGo = new GameObject("Hud");
-            hudGo.transform.SetParent(_safe, false);
-            var hudRect = hudGo.AddComponent<RectTransform>();
-            hudRect.anchorMin = new Vector2(0f, 1f);
-            hudRect.anchorMax = new Vector2(1f, 1f);
-            hudRect.pivot = new Vector2(0.5f, 1f);
-            hudRect.sizeDelta = new Vector2(0f, 190f);
-            hudRect.anchoredPosition = Vector2.zero;
-
-            const float pillW = 300f, pillH = 100f;
-            var pillGo = new GameObject("StreakPill");
-            pillGo.transform.SetParent(hudGo.transform, false);
-            _streakPill = pillGo.AddComponent<RectTransform>();
-            _streakPill.anchorMin = _streakPill.anchorMax = _streakPill.pivot = new Vector2(1f, 1f);
-            _streakPill.sizeDelta = new Vector2(pillW, pillH);
-            _streakPill.anchoredPosition = new Vector2(-MarginU, -30f);
-            var pillImg = pillGo.AddComponent<Image>();
-            pillImg.sprite = RoundedRectSprite.Get(64);
-            pillImg.type = Image.Type.Sliced;
-            pillImg.color = new Color(0f, 0f, 0f, 0.30f);
-            pillImg.raycastTarget = false;
-
-            var discGo = new GameObject("Disc");
-            discGo.transform.SetParent(pillGo.transform, false);
-            var discRect = discGo.AddComponent<RectTransform>();
-            discRect.anchorMin = discRect.anchorMax = new Vector2(0f, 0.5f);
-            discRect.pivot = new Vector2(0.5f, 0.5f);
-            discRect.sizeDelta = new Vector2(52f, 52f);
-            discRect.anchoredPosition = new Vector2(50f, 0f);
-            _streakDisc = discGo.AddComponent<Image>();
-            _streakDisc.sprite = DiscSprite.Get();
-            _streakDisc.raycastTarget = false;
-
-            _streakText = MakeText(pillGo.transform, "StreakText", 58, TextAnchor.MiddleLeft, Color.white, 2f, 0.3f);
-            var sr = _streakText.rectTransform;
-            sr.offsetMin = new Vector2(96f, 0f);
-            sr.offsetMax = new Vector2(-24f, 0f);
-            BestFit(_streakText, 36);
-
-            _titleText = MakeText(hudGo.transform, "Title", 78, TextAnchor.UpperLeft, Color.white, 3f, 0.45f);
-            _subText = MakeText(hudGo.transform, "Sub", 48, TextAnchor.UpperLeft, new Color(1f, 1f, 1f, 0.72f), 2f, 0.35f);
-            float right = MarginU + pillW + 20f;
-            PlaceTopText(_titleText, MarginU, right, -22f, 100f);
-            PlaceTopText(_subText, MarginU, right, -112f, 70f);
-            BestFit(_titleText, 46);
-            BestFit(_subText, 30);
-            _titleText.text = "Detective de Series";
+            _hud = new GameHud(_safe, "Detective de Series", MarginU, this);
         }
 
         private void BuildBanner()
@@ -809,16 +762,22 @@ namespace NeuroVida.Games.Series
 
         private void UpdateHudText()
         {
-            _subText.text = Endless
-                ? $"Puntos {_points} · Nivel {_effLevel}"
-                : $"Serie {_trialIndex + 1} de {SeriesContract.TotalTrials} · Nivel {_effLevel}";
+            // Marcador común (GameHud): nivel + puntos que cuentan (Reto) o avance "3 de 12" (Precisión).
+            if (Endless)
+            {
+                _hud.SetLevel(_effLevel);
+                _hud.SetPoints(_points);
+            }
+            else
+            {
+                _hud.SetLevel(_effLevel);
+                _hud.SetInfo($"{_trialIndex + 1} de {SeriesContract.TotalTrials}");
+            }
         }
 
         private void SetStreak(int streak)
         {
-            _streakText.text = $"Racha {streak}";
-            _streakDisc.color = streak >= 3 ? AmberColor : new Color(1f, 1f, 1f, 0.30f);
-            if (streak > 0) StartCoroutine(PopRect(_streakPill, 1.12f, 0.22f));
+            _hud.SetStreak(streak);
         }
     }
 }

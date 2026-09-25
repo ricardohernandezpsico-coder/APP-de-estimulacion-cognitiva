@@ -40,6 +40,9 @@ namespace NeuroVida.Contracts
         /// onboarding de la app nativa (dato de salud/personal reducido a lo imprescindible).</summary>
         public string age_band;
         public bool sound_enabled;
+        /// <summary>Vibración (Ajustes > Vibración de la app). Por defecto activada: si el JSON no la trae (app
+        /// vieja), <c>JsonUtility</c> conserva este valor inicial.</summary>
+        public bool haptics_enabled = true;
         /// <summary>Rating guardado del DDA común (0..1) si la app tiene uno para este juego.</summary>
         public bool has_dda_rating;
         public float dda_rating;
