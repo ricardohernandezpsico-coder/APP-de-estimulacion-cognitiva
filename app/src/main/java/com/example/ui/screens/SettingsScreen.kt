@@ -33,7 +33,6 @@ import com.example.model.AgeBand
 import com.example.model.AppLanguage
 import com.example.model.DifficultyMode
 import com.example.model.DomainType
-import com.example.model.ThemeMode
 import com.example.model.UserSettings
 import com.example.ui.i18n.strings
 import com.example.ui.theme.EmeraldAccent
@@ -68,7 +67,8 @@ fun SettingsScreen(
   var diffVelocidad by remember(userSettings.difficultyVelocidad) { mutableStateOf(userSettings.difficultyVelocidad) }
   var cognitiveAssistance by remember(userSettings.cognitiveAssistance) { mutableStateOf(userSettings.cognitiveAssistance) }
   var timeScaleFactor by remember(userSettings.timeScaleFactor) { mutableStateOf(userSettings.timeScaleFactor) }
-  var themeMode by remember(userSettings.themeMode) { mutableStateOf(userSettings.themeMode) }
+  // El tema es único (cosmos oscuro, ver Theme.kt): ya no hay selector; se reenvía el valor guardado tal cual.
+  val themeMode = userSettings.themeMode
   var appLanguage by remember(userSettings.language) { mutableStateOf(userSettings.language) }
   var ageBand by remember(userSettings.ageBand) { mutableStateOf(userSettings.ageBand ?: AgeBand.ADULT) }
 
@@ -778,58 +778,8 @@ fun SettingsScreen(
 
         HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
 
-        // Theme mode selector (Claro / Oscuro / Sistema)
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-          Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Default.DarkMode, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-            Spacer(modifier = Modifier.width(10.dp))
-            Text(
-              text = "Tema de la app",
-              style = MaterialTheme.typography.bodyMedium,
-              fontWeight = FontWeight.SemiBold
-            )
-          }
-          Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            ThemeMode.values().forEach { mode ->
-              FilterChip(
-                selected = themeMode == mode,
-                onClick = {
-                  themeMode = mode
-                  viewModel.updateSettings(
-                    name = nameInput,
-                    weeklyGoal = weeklyGoal,
-                    defaultTimed = defaultTimed,
-                    sound = soundEnabled,
-                    haptics = hapticsEnabled,
-                    notificationsEnabled = notificationsEnabled,
-                    reminderHour = reminderHour,
-                    reminderMinute = reminderMinute,
-                    themeMode = mode
-                  )
-                },
-                label = {
-                  Text(
-                    text = when (mode) {
-                      ThemeMode.LIGHT -> "☀️ Claro"
-                      ThemeMode.DARK -> "🌙 Oscuro"
-                      ThemeMode.SYSTEM -> "⚙️ Sistema"
-                    }
-                  )
-                },
-                colors = FilterChipDefaults.filterChipColors(
-                  selectedContainerColor = TealPrimary.copy(alpha = 0.15f),
-                  selectedLabelColor = TealPrimary
-                ),
-                modifier = Modifier.testTag("chip_theme_${mode.name.lowercase()}")
-              )
-            }
-          }
-        }
-
-        HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
-
-        // Rango de edad (piloto de perfiles por edad, 20-sep): mismo patrón visual que
-        // el selector de tema. Cambia el DDA/tamaño de cartas en Parejas Ocultas
+        // Rango de edad (piloto de perfiles por edad, 20-sep): chips, mismo patrón visual
+        // que el selector de idioma. Cambia el DDA/tamaño de cartas en Parejas Ocultas
         // únicamente por ahora -- el onboarding prometió "podés cambiarlo cuando
         // quieras desde Ajustes", esto cumple esa promesa.
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
