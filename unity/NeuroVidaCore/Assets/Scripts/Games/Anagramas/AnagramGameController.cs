@@ -20,7 +20,7 @@ namespace NeuroVida.Games.Anagramas
     /// Reglas de <c>AnagramasGame.kt</c> (ver <see cref="AnagramContract"/>). Telemetría: reusa
     /// <see cref="StroopTelemetry"/>.
     /// </summary>
-    public class AnagramGameController : MonoBehaviour
+    public class AnagramGameController : GameControllerBase
     {
         public const string GameId = AnagramContract.GameId;
 
@@ -53,10 +53,7 @@ namespace NeuroVida.Games.Anagramas
             public Vector2 Target;
         }
 
-        private SequenceInitConfig _config;
         private System.Random _rng;
-        private AudioSource _audioSource;
-        private readonly Dictionary<float, AudioClip> _toneCache = new Dictionary<float, AudioClip>();
 
         private int _trialIndex, _correct, _streak, _bestStreak, _totalAttempts, _points, _effLevel;
         private AdaptiveDifficulty _dda; // DDA común (ver docs/DDA-comun.md)
@@ -73,9 +70,9 @@ namespace NeuroVida.Games.Anagramas
         private bool Endless => _config != null && _config.config.timed;
 
         // UI
-        private RectTransform _safe, _boardRect, _streakPill, _bannerRect, _timerBg, _timerFill, _fxRect, _resultRoot, _actionsRoot;
+        private RectTransform _safe, _boardRect, _streakPill, _bannerRect, _timerBg, _timerFill, _fxRect, _actionsRoot;
         private Text _titleText, _subText, _streakText, _bannerText;
-        private Image _streakDisc, _flash, _timerFillImage, _bannerImage;
+        private Image _streakDisc, _timerFillImage, _bannerImage;
         private ProgressDots _dots;
         private Toast _toast;
         private ExitButton _exit;
@@ -87,13 +84,6 @@ namespace NeuroVida.Games.Anagramas
         private float _slotsCenterY;
         private Vector2[] _poolPositions = new Vector2[MaxLetters];
         private Vector2[] _slotPositions = new Vector2[MaxLetters];
-
-        private void Awake()
-        {
-            _audioSource = gameObject.AddComponent<AudioSource>();
-            BuildUi();
-            gameObject.SetActive(false);
-        }
 
         // Las fichas se deslizan suavemente hacia su destino (resorte amortiguado, independiente del framerate).
         private void Update()
@@ -451,7 +441,7 @@ namespace NeuroVida.Games.Anagramas
 
         // ------------------------------------------------------------------ construcción de UI
 
-        private void BuildUi()
+        protected override void BuildUi()
         {
             if (FindObjectOfType<UnityEngine.EventSystems.EventSystem>() == null)
             {
@@ -730,17 +720,6 @@ namespace NeuroVida.Games.Anagramas
             go.SetActive(false);
         }
 
-        private void AddResultText(string name, int size, Vector2 pos, Color color)
-        {
-            var t = MakeText(_resultRoot, name, size, TextAnchor.MiddleCenter, color, 3f, 0.4f);
-            var r = t.rectTransform;
-            r.anchorMin = r.anchorMax = new Vector2(0.5f, 0.5f);
-            r.pivot = new Vector2(0.5f, 0.5f);
-            r.sizeDelta = new Vector2(820f, size * 1.4f);
-            r.anchoredPosition = pos;
-            t.horizontalOverflow = HorizontalWrapMode.Overflow;
-        }
-
         private void ShowResult(int score, int avgMs, int total)
         {
             _exit.Show();
@@ -761,23 +740,6 @@ namespace NeuroVida.Games.Anagramas
             _resultRoot.gameObject.SetActive(true);
             StartCoroutine(AnimateResult(score));
             StartCoroutine(UiFx.SparkBurst(_fxRect, Vector2.zero, Accent, 24, 420f, 56f, 0.9f));
-        }
-
-        private IEnumerator AnimateResult(int score)
-        {
-            var scoreText = _resultRoot.Find("Score").GetComponent<Text>();
-            float t = 0f;
-            const float seconds = 0.9f;
-            while (t < seconds)
-            {
-                t += Time.unscaledDeltaTime;
-                float k = Mathf.Clamp01(t / seconds);
-                _resultRoot.localScale = Vector3.one * Mathf.LerpUnclamped(0.7f, 1f, UiFx.EaseOutBack(Mathf.Clamp01(k * 2f)));
-                scoreText.text = Mathf.RoundToInt(score * UiFx.EaseOutCubic(k)).ToString();
-                yield return null;
-            }
-            scoreText.text = score.ToString();
-            _resultRoot.localScale = Vector3.one;
         }
 
         // ------------------------------------------------------------------ fichas
@@ -917,31 +879,6 @@ namespace NeuroVida.Games.Anagramas
             _streakText.text = $"Racha {streak}";
             _streakDisc.color = streak >= 3 ? AmberColor : new Color(1f, 1f, 1f, 0.30f);
             if (streak > 0) StartCoroutine(PopRect(_streakPill, 1.12f, 0.22f));
-        }
-
-        private IEnumerator Flash(Color color, float maxAlpha, float seconds)
-        {
-            float t = 0f;
-            while (t < seconds)
-            {
-                t += Time.unscaledDeltaTime;
-                float k = Mathf.Clamp01(t / seconds);
-                _flash.color = new Color(color.r, color.g, color.b, maxAlpha * (1f - k));
-                yield return null;
-            }
-            _flash.color = new Color(0f, 0f, 0f, 0f);
-        }
-
-        private void PlayTone(float hz, float seconds, float volume)
-        {
-            if (_config != null && _config.config != null && !_config.config.sound_enabled) return;
-            float key = Mathf.Round(hz * 10f) + seconds * 100000f;
-            if (!_toneCache.TryGetValue(key, out var clip))
-            {
-                clip = HarmonicTone.Build(hz, seconds, volume);
-                _toneCache[key] = clip;
-            }
-            _audioSource.PlayOneShot(clip);
         }
     }
 }

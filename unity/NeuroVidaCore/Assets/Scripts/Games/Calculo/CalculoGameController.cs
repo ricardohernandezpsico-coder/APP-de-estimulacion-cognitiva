@@ -20,7 +20,7 @@ namespace NeuroVida.Games.Calculo
     /// más familias nuevas (ver <see cref="CalculoContract"/>). Telemetría: reusa
     /// <see cref="StroopTelemetry"/>.
     /// </summary>
-    public class CalculoGameController : MonoBehaviour
+    public class CalculoGameController : GameControllerBase
     {
         public const string GameId = CalculoContract.GameId;
 
@@ -49,10 +49,7 @@ namespace NeuroVida.Games.Calculo
         };
         private static readonly Color OptionInk = new Color(0x0B / 255f, 0x2A / 255f, 0x3F / 255f);
 
-        private SequenceInitConfig _config;
         private System.Random _rng;
-        private AudioSource _audioSource;
-        private readonly Dictionary<float, AudioClip> _toneCache = new Dictionary<float, AudioClip>();
 
         private int _trialIndex, _correct, _streak, _bestStreak, _totalAnswered, _points, _effLevel;
         private long _responseMsSum;
@@ -67,9 +64,9 @@ namespace NeuroVida.Games.Calculo
         private bool Endless => _config != null && _config.config.timed;
 
         // UI
-        private RectTransform _safe, _streakPill, _timerBg, _timerFill, _fxRect, _resultRoot, _bubbleRect, _waterRect, _optionsRoot, _waveA, _waveB;
+        private RectTransform _safe, _streakPill, _timerBg, _timerFill, _fxRect, _bubbleRect, _waterRect, _optionsRoot, _waveA, _waveB;
         private Text _titleText, _subText, _streakText, _bubbleText;
-        private Image _streakDisc, _flash, _timerFillImage, _bubbleFill, _bubbleBorder;
+        private Image _streakDisc, _timerFillImage, _bubbleFill, _bubbleBorder;
         private CanvasGroup _bubbleGroup;
         private ProgressDots _dots;
         private Toast _toast;
@@ -79,13 +76,6 @@ namespace NeuroVida.Games.Calculo
         private readonly List<Image> _optionImages = new List<Image>();
         private readonly List<Text> _optionLabels = new List<Text>();
         private float _bubbleTopY, _bubbleWaterY, _bubbleRestY, _waterSurfaceY, _contentW, _bubbleH;
-
-        private void Awake()
-        {
-            _audioSource = gameObject.AddComponent<AudioSource>();
-            BuildUi();
-            gameObject.SetActive(false);
-        }
 
         // ------------------------------------------------------------------ sesión
 
@@ -435,7 +425,7 @@ namespace NeuroVida.Games.Calculo
 
         // ------------------------------------------------------------------ construcción de UI
 
-        private void BuildUi()
+        protected override void BuildUi()
         {
             if (FindObjectOfType<UnityEngine.EventSystems.EventSystem>() == null)
             {
@@ -731,17 +721,6 @@ namespace NeuroVida.Games.Calculo
             go.SetActive(false);
         }
 
-        private void AddResultText(string name, int size, Vector2 pos, Color color)
-        {
-            var t = MakeText(_resultRoot, name, size, TextAnchor.MiddleCenter, color, 3f, 0.4f);
-            var r = t.rectTransform;
-            r.anchorMin = r.anchorMax = new Vector2(0.5f, 0.5f);
-            r.pivot = new Vector2(0.5f, 0.5f);
-            r.sizeDelta = new Vector2(820f, size * 1.4f);
-            r.anchoredPosition = pos;
-            t.horizontalOverflow = HorizontalWrapMode.Overflow;
-        }
-
         private void ShowResult(int score, int avgMs, int total)
         {
             _exit.Show();
@@ -762,23 +741,6 @@ namespace NeuroVida.Games.Calculo
             _resultRoot.gameObject.SetActive(true);
             StartCoroutine(AnimateResult(score));
             StartCoroutine(UiFx.SparkBurst(_fxRect, Vector2.zero, Aqua, 24, 420f, 56f, 0.9f));
-        }
-
-        private IEnumerator AnimateResult(int score)
-        {
-            var scoreText = _resultRoot.Find("Score").GetComponent<Text>();
-            float t = 0f;
-            const float seconds = 0.9f;
-            while (t < seconds)
-            {
-                t += Time.unscaledDeltaTime;
-                float k = Mathf.Clamp01(t / seconds);
-                _resultRoot.localScale = Vector3.one * Mathf.LerpUnclamped(0.7f, 1f, UiFx.EaseOutBack(Mathf.Clamp01(k * 2f)));
-                scoreText.text = Mathf.RoundToInt(score * UiFx.EaseOutCubic(k)).ToString();
-                yield return null;
-            }
-            scoreText.text = score.ToString();
-            _resultRoot.localScale = Vector3.one;
         }
 
         // ------------------------------------------------------------------ layout
@@ -865,31 +827,6 @@ namespace NeuroVida.Games.Calculo
             _streakText.text = $"Racha {streak}";
             _streakDisc.color = streak >= 3 ? AmberColor : new Color(1f, 1f, 1f, 0.30f);
             if (streak > 0) StartCoroutine(PopRect(_streakPill, 1.12f, 0.22f));
-        }
-
-        private IEnumerator Flash(Color color, float maxAlpha, float seconds)
-        {
-            float t = 0f;
-            while (t < seconds)
-            {
-                t += Time.unscaledDeltaTime;
-                float k = Mathf.Clamp01(t / seconds);
-                _flash.color = new Color(color.r, color.g, color.b, maxAlpha * (1f - k));
-                yield return null;
-            }
-            _flash.color = new Color(0f, 0f, 0f, 0f);
-        }
-
-        private void PlayTone(float hz, float seconds, float volume)
-        {
-            if (_config != null && _config.config != null && !_config.config.sound_enabled) return;
-            float key = Mathf.Round(hz * 10f) + seconds * 100000f;
-            if (!_toneCache.TryGetValue(key, out var clip))
-            {
-                clip = HarmonicTone.Build(hz, seconds, volume);
-                _toneCache[key] = clip;
-            }
-            _audioSource.PlayOneShot(clip);
         }
     }
 }

@@ -18,7 +18,7 @@ namespace NeuroVida.Games.RutaTesoro
     /// encontrarlas. Nada de pantallas intermedias: los cambios de nivel ocurren sobre el mismo
     /// mapa (ola de casillas + aviso arriba). Telemetría: reusa <see cref="StroopTelemetry"/>.
     /// </summary>
-    public class TreasureGameController : MonoBehaviour
+    public class TreasureGameController : GameControllerBase
     {
         public const string GameId = TreasureContract.GameId;
 
@@ -49,10 +49,7 @@ namespace NeuroVida.Games.RutaTesoro
             public TileState State;
         }
 
-        private SequenceInitConfig _config;
         private System.Random _rng;
-        private AudioSource _audioSource;
-        private readonly Dictionary<float, AudioClip> _toneCache = new Dictionary<float, AudioClip>();
 
         private AdaptiveDifficulty _dda; // DDA común (ver docs/DDA-comun.md)
         private int _stage, _maxStage, _hearts, _cleared, _played, _found, _misses, _treasuresFoundTotal;
@@ -66,9 +63,9 @@ namespace NeuroVida.Games.RutaTesoro
         private readonly List<Tile> _tiles = new List<Tile>();
 
         // UI
-        private RectTransform _safe, _boardRect, _timerBg, _timerFill, _fxRect, _resultRoot;
+        private RectTransform _safe, _boardRect, _timerBg, _timerFill, _fxRect;
         private Text _titleText, _subText;
-        private Image _boardPanel, _flash, _timerFillImage;
+        private Image _boardPanel, _timerFillImage;
         private ProgressDots _dots;
         private LivesHud _livesHud;
         private PhasePill _pill;
@@ -79,13 +76,6 @@ namespace NeuroVida.Games.RutaTesoro
         private Vector2 _boardCenter;
 
         private bool Timed => _config != null && _config.config.timed;
-
-        private void Awake()
-        {
-            _audioSource = gameObject.AddComponent<AudioSource>();
-            BuildUi();
-            gameObject.SetActive(false);
-        }
 
         // ------------------------------------------------------------------ sesión
 
@@ -471,26 +461,9 @@ namespace NeuroVida.Games.RutaTesoro
             StartCoroutine(UiFx.SparkBurst(_fxRect, Vector2.zero, RevealColor, 24, 420f, 56f, 0.9f));
         }
 
-        private IEnumerator AnimateResult(int score)
-        {
-            var scoreText = _resultRoot.Find("Score").GetComponent<Text>();
-            float t = 0f;
-            const float seconds = 0.9f;
-            while (t < seconds)
-            {
-                t += Time.unscaledDeltaTime;
-                float k = Mathf.Clamp01(t / seconds);
-                _resultRoot.localScale = Vector3.one * Mathf.LerpUnclamped(0.7f, 1f, UiFx.EaseOutBack(Mathf.Clamp01(k * 2f)));
-                scoreText.text = Mathf.RoundToInt(score * UiFx.EaseOutCubic(k)).ToString();
-                yield return null;
-            }
-            scoreText.text = score.ToString();
-            _resultRoot.localScale = Vector3.one;
-        }
-
         // ------------------------------------------------------------------ construcción de UI
 
-        private void BuildUi()
+        protected override void BuildUi()
         {
             if (FindObjectOfType<UnityEngine.EventSystems.EventSystem>() == null)
             {
@@ -662,17 +635,6 @@ namespace NeuroVida.Games.RutaTesoro
             go.SetActive(false);
         }
 
-        private void AddResultText(string name, int size, Vector2 pos, Color color)
-        {
-            var t = MakeText(_resultRoot, name, size, TextAnchor.MiddleCenter, color, 3f, 0.4f);
-            var r = t.rectTransform;
-            r.anchorMin = r.anchorMax = new Vector2(0.5f, 0.5f);
-            r.pivot = new Vector2(0.5f, 0.5f);
-            r.sizeDelta = new Vector2(820f, size * 1.4f);
-            r.anchoredPosition = pos;
-            t.horizontalOverflow = HorizontalWrapMode.Overflow;
-        }
-
         // ------------------------------------------------------------------ mapa
 
         private void BuildBoard(int n)
@@ -785,31 +747,6 @@ namespace NeuroVida.Games.RutaTesoro
                 list[i] = list[j];
                 list[j] = tmp;
             }
-        }
-
-        private IEnumerator Flash(Color color, float maxAlpha, float seconds)
-        {
-            float t = 0f;
-            while (t < seconds)
-            {
-                t += Time.unscaledDeltaTime;
-                float k = Mathf.Clamp01(t / seconds);
-                _flash.color = new Color(color.r, color.g, color.b, maxAlpha * (1f - k));
-                yield return null;
-            }
-            _flash.color = new Color(0f, 0f, 0f, 0f);
-        }
-
-        private void PlayTone(float hz, float seconds, float volume)
-        {
-            if (_config != null && _config.config != null && !_config.config.sound_enabled) return;
-            float key = Mathf.Round(hz * 10f) + seconds * 100000f;
-            if (!_toneCache.TryGetValue(key, out var clip))
-            {
-                clip = HarmonicTone.Build(hz, seconds, volume);
-                _toneCache[key] = clip;
-            }
-            _audioSource.PlayOneShot(clip);
         }
     }
 }

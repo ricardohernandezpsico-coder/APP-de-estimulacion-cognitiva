@@ -257,4 +257,11 @@ Al cambiar esquema: 1) entidad, 2) subir version, 3) `Migration(N, N+1)` en SQL,
 ## Base común de controladores Unity — tramo 1: `UiKit` (25-sep)
 - `Games/Shared/UiKit.cs` (clase estática): `ApplySafeArea`, `Stretch`, `MakeText`, `BestFit`, `PlaceTopText`, `PopRect`, `PopIn`, `LocalIn`, copiadas tal cual. Los 7 controladores del DDA común borraron sus copias idénticas (50 funciones, ~570 líneas; un script comparó cada cuerpo con la versión compartida antes de borrarlo) y las usan con `using static NeuroVida.Games.Shared.UiKit;` (las llamadas no cambian). Secuencia y Parejas tienen versiones propias distintas y no se tocaron.
 - Sin cambio de comportamiento. NO compilado acá (sin Unity): correr la suite EditMode (108) y los 9 smoke tests antes de dar por bueno.
-- Tramo 2 (pendiente): clase base para lo que depende de campos de cada juego (`Awake`, `PlayTone` + caché de tonos, `Flash`, `AnimateResult`, `AddResultText`, `SetStreak`, panel de resultado, reloj de ronda).
+- Tramo 1 verificado por Ricardo (25-sep): 108/108 EditMode, 9 smoke tests, export y `assembleDebug` OK.
+
+## Base común — tramo 2: `GameControllerBase` (25-sep)
+- `Games/Shared/GameControllerBase.cs` (abstracta, `: MonoBehaviour`): campos `_config`, `_audioSource`, `_toneCache`, `_flash`, `_resultRoot` (protected) y `Awake` (virtual: crea el AudioSource, llama a `BuildUi()` y se desactiva), `BuildUi()` (abstracto), `PlayTone`, `Flash`, `AnimateResult`, `AddResultText` (devuelve el Text, variante de Stroop; los demás ignoran el valor).
+- Los 7 controladores del DDA común heredan de ella (`: GameControllerBase`, `protected override void BuildUi()`), borraron esas 5 funciones y esos 5 campos (~470 líneas; cada cuerpo se comparó con el de la base antes de borrarlo). Sin cambio de comportamiento. Secuencia y Parejas no heredan.
+- Juego nuevo del DDA común: heredar de `GameControllerBase`, implementar `BuildUi()` asignando `_flash` y `_resultRoot` (con un hijo "Score" de tipo Text).
+- Quedan duplicados que difieren un poco entre juegos (HUD, reloj de ronda, `SetStreak`, `ShowResult`/`BuildResultPanel`): unificarlos cambia detalles visuales, conviene hacerlo junto con la unificación de estilo (paleta/tipografía de la app).
+- NO compilado acá: correr EditMode + smoke tests + export + `assembleDebug`.

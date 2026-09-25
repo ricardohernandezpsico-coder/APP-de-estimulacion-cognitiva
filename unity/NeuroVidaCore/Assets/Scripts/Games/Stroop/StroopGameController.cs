@@ -25,7 +25,7 @@ namespace NeuroVida.Games.Stroop
     /// </list>
     /// La UI se arma por código (mismo criterio que Secuencia/Parejas); todo dentro del Safe Area.
     /// </summary>
-    public class StroopGameController : MonoBehaviour
+    public class StroopGameController : GameControllerBase
     {
         public const string GameId = StroopContract.GameId;
 
@@ -42,10 +42,7 @@ namespace NeuroVida.Games.Stroop
         private static readonly Color AmberColor = new Color(0xF5 / 255f, 0x9E / 255f, 0x0B / 255f);
         private static readonly Color DarkLabel = new Color(0x1F / 255f, 0x29 / 255f, 0x37 / 255f);
 
-        private SequenceInitConfig _config;
         private System.Random _rng;
-        private AudioSource _audioSource;
-        private readonly Dictionary<float, AudioClip> _toneCache = new Dictionary<float, AudioClip>();
 
         // Estado de partida
         private int _trialIndex;
@@ -76,7 +73,7 @@ namespace NeuroVida.Games.Stroop
         // UI
         private RectTransform _safe;
         private Text _titleText, _subText, _streakText, _wordText, _bannerText, _bannerSub, _bannerAw, _chipText;
-        private Image _streakDisc, _bannerBg, _bannerDisc, _bannerDrop, _wordGlow, _cardBorder, _chipBg, _flash;
+        private Image _streakDisc, _bannerBg, _bannerDisc, _bannerDrop, _wordGlow, _cardBorder, _chipBg;
         private Color _ruleAccent = Color.white;
         private RectTransform _hudRect, _streakPill, _bannerRect, _timerBg, _timerFill, _cardRect, _fxRect;
         private CanvasGroup _cardGroup;
@@ -88,14 +85,6 @@ namespace NeuroVida.Games.Stroop
         private Toast _toast;
         private ExitButton _exit;
         private CountdownScreen _countdown;
-        private RectTransform _resultRoot;
-
-        private void Awake()
-        {
-            _audioSource = gameObject.AddComponent<AudioSource>();
-            BuildUi();
-            gameObject.SetActive(false);
-        }
 
         // ------------------------------------------------------------------ sesión
 
@@ -367,7 +356,7 @@ namespace NeuroVida.Games.Stroop
 
         private Vector2 _cardRestPos;
 
-        private void BuildUi()
+        protected override void BuildUi()
         {
             if (FindObjectOfType<UnityEngine.EventSystems.EventSystem>() == null)
             {
@@ -750,18 +739,6 @@ namespace NeuroVida.Games.Stroop
             go.SetActive(false);
         }
 
-        private Text AddResultText(string name, int size, Vector2 pos, Color color)
-        {
-            var t = MakeText(_resultRoot, name, size, TextAnchor.MiddleCenter, color, 3f, 0.4f);
-            var r = t.rectTransform;
-            r.anchorMin = r.anchorMax = new Vector2(0.5f, 0.5f);
-            r.pivot = new Vector2(0.5f, 0.5f);
-            r.sizeDelta = new Vector2(820f, size * 1.4f);
-            r.anchoredPosition = pos;
-            t.horizontalOverflow = HorizontalWrapMode.Overflow;
-            return t;
-        }
-
         private void ShowResult(int score, int avgMs, int total)
         {
             _exit.Show();
@@ -781,23 +758,6 @@ namespace NeuroVida.Games.Stroop
             _resultRoot.gameObject.SetActive(true);
             StartCoroutine(AnimateResult(score));
             StartCoroutine(UiFx.SparkBurst(_fxRect, Vector2.zero, WordAccent, 24, 420f, 56f, 0.9f));
-        }
-
-        private IEnumerator AnimateResult(int score)
-        {
-            var scoreText = _resultRoot.Find("Score").GetComponent<Text>();
-            float t = 0f;
-            const float seconds = 0.9f;
-            while (t < seconds)
-            {
-                t += Time.unscaledDeltaTime;
-                float k = Mathf.Clamp01(t / seconds);
-                _resultRoot.localScale = Vector3.one * Mathf.LerpUnclamped(0.7f, 1f, UiFx.EaseOutBack(Mathf.Clamp01(k * 2f)));
-                scoreText.text = Mathf.RoundToInt(score * UiFx.EaseOutCubic(k)).ToString();
-                yield return null;
-            }
-            scoreText.text = score.ToString();
-            _resultRoot.localScale = Vector3.one;
         }
 
         // ------------------------------------------------------------------ layout
@@ -884,31 +844,6 @@ namespace NeuroVida.Games.Stroop
             }
         }
 
-        private IEnumerator Flash(Color color, float maxAlpha, float seconds)
-        {
-            float t = 0f;
-            while (t < seconds)
-            {
-                t += Time.unscaledDeltaTime;
-                float k = Mathf.Clamp01(t / seconds);
-                _flash.color = new Color(color.r, color.g, color.b, maxAlpha * (1f - k));
-                yield return null;
-            }
-            _flash.color = new Color(0f, 0f, 0f, 0f);
-        }
-
         // ------------------------------------------------------------------ audio
-
-        private void PlayTone(float hz, float seconds, float volume)
-        {
-            if (_config != null && _config.config != null && !_config.config.sound_enabled) return;
-            float key = Mathf.Round(hz * 10f) + seconds * 100000f;
-            if (!_toneCache.TryGetValue(key, out var clip))
-            {
-                clip = HarmonicTone.Build(hz, seconds, volume);
-                _toneCache[key] = clip;
-            }
-            _audioSource.PlayOneShot(clip);
-        }
     }
 }
