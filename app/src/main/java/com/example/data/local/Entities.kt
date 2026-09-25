@@ -1,5 +1,6 @@
 package com.example.data.local
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import com.example.model.AgeBand
@@ -58,7 +59,11 @@ data class GameProgressEntity(
   val masteryStreak: Int = 0,
   // Ranking tipo ELO (ver RankTier/GameRankInfo en Models.kt): sube o baja con cada
   // partida según el score, independiente de currentLevel/masteryStreak.
-  val eloRating: Int = 0
+  val eloRating: Int = 0,
+  // DDA común (Unity, ver docs/DDA-comun.md): rating final de la escalera del juego, normalizado
+  // 0..1 y suavizado entre sesiones. -1 = todavía sin dato (el juego arranca según el nivel elegido).
+  @ColumnInfo(defaultValue = "-1")
+  val ddaRating: Float = -1f
 )
 
 @Entity(tableName = "daily_sessions")

@@ -1,0 +1,17 @@
+{
+    "name": "NeuroVida.Games",
+    "rootNamespace": "NeuroVida.Games",
+    "references": [
+        "NeuroVida.Contracts",
+        "NeuroVida.Bridge"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

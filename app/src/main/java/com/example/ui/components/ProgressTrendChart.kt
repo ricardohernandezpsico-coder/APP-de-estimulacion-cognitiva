@@ -131,13 +131,10 @@ fun ProgressTrendChart(
 
   val activeColor = selectedDomain?.color ?: TealPrimary
 
-  Card(
+  Column(
     modifier = modifier
       .fillMaxWidth()
-      .testTag("progress_trend_card"),
-    shape = RoundedCornerShape(24.dp),
-    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+      .testTag("progress_trend_card")
   ) {
     Column(
       modifier = Modifier

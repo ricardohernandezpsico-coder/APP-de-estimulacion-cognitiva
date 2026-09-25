@@ -66,6 +66,22 @@ class NeuroVidaViewModel(application: Application) : AndroidViewModel(applicatio
   }.stateIn(viewModelScope, SharingStarted.Eagerly, GameRegistry.allGames.map { GameRankInfo(it.id, 0) })
   val dailySession = repository.dailySession
 
+  /** Nivel (0..1) por juego para Progreso: rating del DDA comun; en Secuencia/Parejas (motores propios) se
+   *  aproxima con el nivel 1-5 si ya se jugaron; null = sin medir. */
+  val gameLevelsForProgress: StateFlow<Map<String, Float?>> = combine(
+    repository.gameDdaRating, gameLevels, gameHistory
+  ) { dda, levels, hist ->
+    val played = hist.map { it.gameId }.toSet()
+    GameRegistry.allGames.associate { g ->
+      val r = dda[g.id] ?: -1f
+      g.id to when {
+        r >= 0f -> r
+        g.id in played -> ((levels[g.id] ?: 1) - 1) / 5f + 0.1f
+        else -> null
+      }
+    }
+  }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
+
   private val _currentTab = MutableStateFlow(AppTab.HOY)
   val currentTab: StateFlow<AppTab> = _currentTab.asStateFlow()
 
@@ -114,6 +130,7 @@ class NeuroVidaViewModel(application: Application) : AndroidViewModel(applicatio
   }.stateIn(viewModelScope, SharingStarted.Eagerly, listOf(60f, 75f, 80f, 85f))
 
   init {
+    viewModelScope.launch { com.example.bridge.UnityResultBus.results.collect { onUnityResult(it) } }
     viewModelScope.launch {
       userSettings.collect { settings ->
         if (settings.notificationsEnabled) {
@@ -181,6 +198,33 @@ class NeuroVidaViewModel(application: Application) : AndroidViewModel(applicatio
     val intensity = if (lvl >= 5) getEffectiveIntensityForGame(gameId) else 0
     _activeGame.value = ActiveGameSession(def, lvl, timed, isDailyFlow, intensity)
     _lastResult.value = null
+  }
+
+  /**
+   * Resultado de una partida jugada en Unity (llega por [com.example.bridge.UnityResultBus]). Se guarda una sola
+   * vez en Room; si coincide con la sesión activa se muestra la pantalla de resultado de la app.
+   * Las partidas lanzadas desde los botones de depuración (sin sesión activa) solo se guardan.
+   */
+  fun onUnityResult(result: GamePlayResult) {
+    val current = _activeGame.value
+    viewModelScope.launch {
+      val levelUp = repository.recordGameResult(result)
+      if (current != null && current.gameDef.id == result.gameId) {
+        _lastResult.value = Pair(result, levelUp)
+        _activeGame.value = null
+        triggerHapticFeedback(if (result.score >= 70) HapticType.SUCCESS else HapticType.LIGHT)
+      }
+    }
+  }
+
+  /** El usuario volvió de Unity: si no llegó ningún resultado (salió sin terminar), se cierra la sesión. */
+  fun onUnityGameClosed() {
+    // Margen para que un resultado en camino (llega por broadcast desde el proceso de Unity) todavía se
+    // asocie a la sesión activa antes de cerrarla.
+    viewModelScope.launch {
+      kotlinx.coroutines.delay(1500)
+      if (_lastResult.value == null) _activeGame.value = null
+    }
   }
 
   fun finishActiveGame(score: Int, correct: Int, total: Int) {

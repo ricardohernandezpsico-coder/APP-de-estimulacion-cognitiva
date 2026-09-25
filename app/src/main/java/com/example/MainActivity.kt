@@ -27,6 +27,12 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.example.games.*
@@ -49,7 +55,10 @@ class MainActivity : ComponentActivity() {
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
-    enableEdgeToEdge()
+    enableEdgeToEdge(
+      statusBarStyle = androidx.activity.SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
+      navigationBarStyle = androidx.activity.SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
+    )
     setContent {
       val userSettings by viewModel.userSettings.collectAsState()
       val darkTheme = when (userSettings.themeMode) {
@@ -78,68 +87,43 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun NeuroVidaApp(viewModel: NeuroVidaViewModel) {
+  val userSettings by viewModel.userSettings.collectAsState()
   val currentTab by viewModel.currentTab.collectAsState()
   val activeGame by viewModel.activeGame.collectAsState()
   val lastResult by viewModel.lastResult.collectAsState()
   val dailySession by viewModel.dailySession.collectAsState()
 
-  Box(
-    modifier = Modifier
-      .fillMaxSize()
-      .background(MaterialTheme.colorScheme.background)
-  ) {
+  Box(modifier = Modifier.fillMaxSize()) {
+    com.example.ui.components.CosmosBackground()
     Scaffold(
       modifier = Modifier
         .fillMaxSize()
         .safeDrawingPadding(),
+      containerColor = androidx.compose.ui.graphics.Color.Transparent,
       bottomBar = {
         // Show bottom bar only when not playing a game or looking at results
         if (activeGame == null && lastResult == null) {
-          NavigationBar(
-            modifier = Modifier
-              .fillMaxWidth()
-              .testTag("bottom_nav_bar"),
-            containerColor = MaterialTheme.colorScheme.surface,
-            tonalElevation = 6.dp
-          ) {
-            val tabs = listOf(
-              Triple(AppTab.HOY, Icons.Filled.Home, Icons.Outlined.Home),
-              Triple(AppTab.JUEGOS, Icons.Filled.SportsEsports, Icons.Outlined.SportsEsports),
-              Triple(AppTab.PROGRESO, Icons.Filled.BarChart, Icons.Outlined.BarChart),
-              Triple(AppTab.AJUSTES, Icons.Filled.Settings, Icons.Outlined.Settings)
-            )
-
-            tabs.forEach { (tab, filledIcon, outlinedIcon) ->
-              val isSelected = currentTab == tab
-              val labelText = when (tab) {
-                AppTab.HOY -> strings.tabToday
-                AppTab.JUEGOS -> strings.tabGames
-                AppTab.PROGRESO -> strings.tabProgress
-                AppTab.AJUSTES -> strings.tabSettings
-              }
-              NavigationBarItem(
-                selected = isSelected,
-                onClick = { viewModel.setTab(tab) },
-                icon = {
-                  Icon(
-                    imageVector = if (isSelected) filledIcon else outlinedIcon,
-                    contentDescription = labelText
-                  )
-                },
-                label = { Text(text = labelText) },
-                colors = NavigationBarItemDefaults.colors(
-                  selectedIconColor = TealPrimary,
-                  selectedTextColor = TealPrimary,
-                  indicatorColor = TealPrimary.copy(alpha = 0.15f)
-                ),
-                modifier = Modifier.testTag("nav_item_${tab.name.lowercase()}")
-              )
-            }
-          }
+          com.example.ui.components.NeuroNavBar(
+            current = currentTab,
+            onSelect = { viewModel.setTab(it) },
+            onTrain = { viewModel.startDailySession() }
+          )
         }
       }
     ) { innerPadding ->
-      Box(modifier = Modifier.padding(innerPadding)) {
+      Box(
+        modifier = Modifier
+          .padding(innerPadding)
+          .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+          .drawWithContent {
+            drawContent()
+            // Las pantallas se desvanecen en los bordes en vez de cortarse en seco
+            drawRect(
+              Brush.verticalGradient(0f to Color.Transparent, 0.025f to Color.Black, 0.955f to Color.Black, 1f to Color.Transparent),
+              blendMode = BlendMode.DstIn
+            )
+          }
+      ) {
         // Content based on tab
         AnimatedContent(
           targetState = currentTab,
@@ -153,85 +137,22 @@ fun NeuroVidaApp(viewModel: NeuroVidaViewModel) {
             )
             AppTab.JUEGOS -> GamesLibraryScreen(viewModel = viewModel)
             AppTab.PROGRESO -> ProgressScreen(viewModel = viewModel)
-            AppTab.AJUSTES -> SettingsScreen(viewModel = viewModel)
+            AppTab.AJUSTES -> com.example.ui.screens.ProfileScreen(viewModel = viewModel)
           }
         }
 
         // Active Game Screen Overlay
         activeGame?.let { session ->
           Box(modifier = Modifier.fillMaxSize()) {
-            when (session.gameDef.id) {
-              "calculo" -> CalculoGame(
-                level = session.level,
-                timed = session.timed,
-                intensity = session.intensity,
-                onFinish = { score, correct, total -> viewModel.finishActiveGame(score, correct, total) },
-                onQuit = { viewModel.closeGameOrResult() }
-              )
-              "parejas" -> ParejasGame(
-                level = session.level,
-                timed = session.timed,
-                intensity = session.intensity,
-                onFinish = { score, correct, total -> viewModel.finishActiveGame(score, correct, total) },
-                onQuit = { viewModel.closeGameOrResult() }
-              )
-              "stroop" -> StroopGame(
-                level = session.level,
-                timed = session.timed,
-                intensity = session.intensity,
-                onFinish = { score, correct, total -> viewModel.finishActiveGame(score, correct, total) },
-                onQuit = { viewModel.closeGameOrResult() }
-              )
-              "secuencia" -> SecuenciaGame(
-                level = session.level,
-                timed = session.timed,
-                intensity = session.intensity,
-                onFinish = { score, correct, total -> viewModel.finishActiveGame(score, correct, total) },
-                onQuit = { viewModel.closeGameOrResult() }
-              )
-              "rutatesoro" -> RutaTesoroGame(
-                level = session.level,
-                timed = session.timed,
-                intensity = session.intensity,
-                onFinish = { score, correct, total -> viewModel.finishActiveGame(score, correct, total) },
-                onQuit = { viewModel.closeGameOrResult() }
-              )
-              "cambiochip" -> CambioChipGame(
-                level = session.level,
-                timed = session.timed,
-                intensity = session.intensity,
-                onFinish = { score, correct, total -> viewModel.finishActiveGame(score, correct, total) },
-                onQuit = { viewModel.closeGameOrResult() }
-              )
-              "series" -> SeriesGame(
-                level = session.level,
-                timed = session.timed,
-                intensity = session.intensity,
-                onFinish = { score, correct, total -> viewModel.finishActiveGame(score, correct, total) },
-                onQuit = { viewModel.closeGameOrResult() }
-              )
-              "anagramas" -> AnagramasGame(
-                level = session.level,
-                timed = session.timed,
-                intensity = session.intensity,
-                onFinish = { score, correct, total -> viewModel.finishActiveGame(score, correct, total) },
-                onQuit = { viewModel.closeGameOrResult() }
-              )
-              "comparacion" -> ComparacionGame(
-                level = session.level,
-                timed = session.timed,
-                intensity = session.intensity,
-                onFinish = { score, correct, total -> viewModel.finishActiveGame(score, correct, total) },
-                onQuit = { viewModel.closeGameOrResult() }
-              )
-              else -> CalculoGame(
-                level = session.level,
-                timed = session.timed,
-                intensity = session.intensity,
-                onFinish = { score, correct, total -> viewModel.finishActiveGame(score, correct, total) },
-                onQuit = { viewModel.closeGameOrResult() }
-              )
-            }
+            // Los 9 juegos se juegan ahora en Unity (ver docs y UnityGameHost): se lanza la Activity de Unity con
+            // esta sesión y el resultado vuelve por UnityResultBus al ViewModel.
+            com.example.ui.UnityGameHost(
+              session = session,
+              userId = userSettings.id.toString(),
+              ageBand = userSettings.ageBand ?: com.example.model.AgeBand.ADULT,
+              soundEnabled = userSettings.soundEnabled,
+              onReturned = { viewModel.onUnityGameClosed() }
+            )
           }
         }
 

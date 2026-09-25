@@ -11,36 +11,25 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 
-private val DarkColorScheme =
+// Esquema unico "cosmos": fondo transparente (lo dibuja CosmosBackground), superficies azul noche y acentos
+// azul electrico + naranja. Ver ui/components/CosmosBackground.kt.
+private val CosmosColorScheme =
   darkColorScheme(
-    primary = TealAccent,
-    onPrimary = Color.Black,
-    primaryContainer = TealDark,
-    onPrimaryContainer = TealLight,
-    secondary = EmeraldAccent,
-    onSecondary = Color.Black,
-    background = DarkBackground,
-    onBackground = Slate50,
-    surface = DarkSurface,
-    onSurface = Slate50,
-    surfaceVariant = DarkSurfaceVariant,
-    onSurfaceVariant = Slate200
-  )
-
-private val LightColorScheme =
-  lightColorScheme(
-    primary = TealPrimary,
-    onPrimary = Color.White,
-    primaryContainer = TealLight,
-    onPrimaryContainer = TealDark,
-    secondary = TealAccent,
-    onSecondary = Color.White,
-    background = Slate50,
-    onBackground = Slate900,
-    surface = Color.White,
-    onSurface = Slate900,
-    surfaceVariant = Slate100,
-    onSurfaceVariant = Slate600
+    primary = Color(0xFF5B9BFF),
+    onPrimary = Color(0xFF07123A),
+    primaryContainer = Color(0xFF1E3A8A),
+    onPrimaryContainer = Color(0xFFDCE8FF),
+    secondary = Color(0xFFFF8A3D),
+    onSecondary = Color(0xFF2B1200),
+    tertiary = Color(0xFFFFB347),
+    background = Color.Transparent,
+    onBackground = Color(0xFFEAF0FF),
+    surface = Color(0xE6172058),
+    onSurface = Color(0xFFEAF0FF),
+    surfaceVariant = Color(0xFF243078),
+    onSurfaceVariant = Color(0xFFB4BFEA),
+    outline = Color(0xFF4B5AA8),
+    outlineVariant = Color(0xFF34418A)
   )
 
 @Composable
@@ -49,15 +38,8 @@ fun NeuroVidaTheme(
   dynamicColor: Boolean = false, // Use intentional brand theme by default
   content: @Composable () -> Unit,
 ) {
-  val colorScheme =
-    when {
-      dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-        val context = LocalContext.current
-        if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-      }
-      darkTheme -> DarkColorScheme
-      else -> LightColorScheme
-    }
+  // La identidad visual es unica (cosmos oscuro): darkTheme y dynamicColor se ignoran.
+  val colorScheme = CosmosColorScheme
 
   MaterialTheme(colorScheme = colorScheme, typography = Typography, content = content)
 }

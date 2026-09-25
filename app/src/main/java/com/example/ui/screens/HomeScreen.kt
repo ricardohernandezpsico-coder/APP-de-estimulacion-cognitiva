@@ -1,591 +1,473 @@
 package com.example.ui.screens
 
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.filled.NotificationsActive
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Whatshot
-import androidx.compose.material.icons.outlined.CheckCircle
-import androidx.compose.material.icons.outlined.FitnessCenter
-import androidx.compose.material.icons.outlined.Schedule
-import androidx.compose.material.icons.outlined.Star
-import androidx.compose.material3.*
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import com.example.model.GamePlayResult
 import com.example.model.GameRegistry
-import com.example.ui.components.CircularProgressRing
-import com.example.ui.components.DomainChip
-import com.example.ui.components.Sparkline
+import com.example.model.RankTier
+import com.example.ui.components.CosmosScroll
+import com.example.ui.components.LeagueShield
+import com.example.ui.components.overallIndex
 import com.example.ui.i18n.LocalAppLanguage
 import com.example.ui.i18n.getGameTitle
-import com.example.ui.i18n.strings
-import com.example.ui.theme.*
+import com.example.ui.theme.Clay
+import com.example.ui.theme.ClayCard
+import com.example.ui.theme.ClayPill
 import com.example.viewmodel.NeuroVidaViewModel
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import java.util.TimeZone
+import kotlin.math.roundToInt
+import kotlin.math.sin
+import kotlinx.coroutines.launch
 
+private const val DAY_MS = 86_400_000L
+private const val PathTilt = 32f
+private val RowHeight = 120.dp
+private val OnNight = Color(0xFFEAF0FF)
+private val OnNightDim = Color(0xFFC7D0FF)
+private val Milestones = listOf(3, 7, 14, 30, 50, 100, 200, 365)
+
+private fun dayIndex(ts: Long): Long = (ts + TimeZone.getDefault().getOffset(ts)) / DAY_MS
+
+private sealed class PathItem {
+  data class Past(val day: Long, val results: List<GamePlayResult>) : PathItem()
+  data class Today(val day: Long, val results: List<GamePlayResult>) : PathItem()
+  /** [flagTarget] != null: hito de racha (bandera) con [remaining] días por delante. */
+  data class Future(val flagTarget: Int?, val remaining: Int) : PathItem()
+}
+
+/** Posición horizontal (0..1) del nodo i: una sinusoide suave, así el trazo es continuo entre filas. */
+private fun fx(i: Int): Float = 0.5f + 0.27f * sin(i * 0.9f)
+
+/**
+ * Inicio ("Hoy") como un CAMINO por el espacio: cada día es un nodo de un sendero sinuoso; hoy es el nodo grande
+ * (toca para entrenar), lo anterior queda hacia arriba (desliza para ver tu recorrido) y adelante hay un hito
+ * de racha. El fondo de estrellas viaja con el desplazamiento (paralaje), ver [CosmosScroll].
+ */
 @Composable
 fun HomeScreen(
   viewModel: NeuroVidaViewModel,
   onNavigateToGames: () -> Unit,
   modifier: Modifier = Modifier
 ) {
-  val userSettings by viewModel.userSettings.collectAsState()
   val streak by viewModel.currentStreak.collectAsState()
-  val last7Days by viewModel.last7DaysActivity.collectAsState()
   val dailySession by viewModel.dailySession.collectAsState()
   val history by viewModel.gameHistory.collectAsState()
-  val sessionsSparkline by viewModel.sessionsSparkline.collectAsState()
-  val scoresSparkline by viewModel.scoresSparkline.collectAsState()
+  val ranks by viewModel.gameRanks.collectAsState()
+  val levels by viewModel.gameLevelsForProgress.collectAsState()
   val weeklyChallenges by viewModel.weeklyChallengeProgress.collectAsState()
+  val lang = LocalAppLanguage.current
+  val scope = rememberCoroutineScope()
 
-  LazyColumn(
-    modifier = modifier
-      .fillMaxSize()
-      .background(MaterialTheme.colorScheme.background)
-      .padding(horizontal = 20.dp),
-    contentPadding = PaddingValues(top = 16.dp, bottom = 96.dp),
-    verticalArrangement = Arrangement.spacedBy(18.dp)
-  ) {
-    // Top greeting header
-    item {
-      Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-      ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-          Surface(
-            shape = CircleShape,
-            color = TealPrimary.copy(alpha = 0.12f),
-            modifier = Modifier.size(50.dp)
-          ) {
-            Box(contentAlignment = Alignment.Center) {
-              Text(text = userSettings.avatar, fontSize = 24.sp)
-            }
-          }
+  var dayDetail by remember { mutableStateOf<PathItem?>(null) }
+  var showChallenges by remember { mutableStateOf(false) }
 
-          Spacer(modifier = Modifier.width(12.dp))
+  val avg = if (ranks.isEmpty()) 0 else ranks.sumOf { it.rating } / ranks.size
+  val tier = RankTier.fromRating(avg)
+  val index = overallIndex(levels)
 
-          Column {
-            Text(
-              text = strings.greetingFormat(userSettings.name),
-              style = MaterialTheme.typography.titleLarge,
-              fontWeight = FontWeight.Black,
-              color = MaterialTheme.colorScheme.onBackground
-            )
-            Row(verticalAlignment = Alignment.CenterVertically) {
-              Surface(
-                shape = RoundedCornerShape(6.dp),
-                color = TealPrimary.copy(alpha = 0.12f)
-              ) {
-                Text(
-                  text = userSettings.difficultyMode.label,
-                  style = MaterialTheme.typography.labelSmall,
-                  color = TealPrimary,
-                  fontWeight = FontWeight.Bold,
-                  modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                )
-              }
-            }
-          }
-        }
+  val items = remember(history, streak) {
+    val today = dayIndex(System.currentTimeMillis())
+    val byDay = history.groupBy { dayIndex(it.timestamp) }
+    val first = minOf(byDay.keys.minOrNull() ?: today, today - 13)
+    val list = mutableListOf<PathItem>()
+    for (d in first until today) list += PathItem.Past(d, byDay[d].orEmpty())
+    list += PathItem.Today(today, byDay[today].orEmpty())
+    val target = Milestones.firstOrNull { it > streak } ?: (streak + 30)
+    val remaining = (target - streak).coerceAtLeast(1)
+    val ahead = minOf(remaining, 3)
+    for (k in 1 until ahead) list += PathItem.Future(null, remaining)
+    list += PathItem.Future(target, remaining)
+    list
+  }
+  val todayIdx = items.indexOfFirst { it is PathItem.Today }
 
-        // Streak badge pill
-        Surface(
-          shape = RoundedCornerShape(20.dp),
-          color = if (streak > 0) Color(0xFFFEF3C7) else MaterialTheme.colorScheme.surfaceVariant
-        ) {
-          Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically
-          ) {
-            Icon(
-              imageVector = Icons.Default.Whatshot,
-              contentDescription = strings.streakLabel,
-              tint = if (streak > 0) Color(0xFFD97706) else MaterialTheme.colorScheme.onSurfaceVariant,
-              modifier = Modifier.size(20.dp)
-            )
-            Spacer(modifier = Modifier.width(4.dp))
-            Text(
-              text = "$streak ${if (streak == 1) strings.daySingle else strings.dayPlural}",
-              style = MaterialTheme.typography.labelLarge,
-              fontWeight = FontWeight.Bold,
-              color = if (streak > 0) Color(0xFFB45309) else MaterialTheme.colorScheme.onSurfaceVariant
-            )
-          }
-        }
-      }
-    }
+  val listState = rememberLazyListState(initialFirstVisibleItemIndex = (todayIdx - 3).coerceAtLeast(0))
+  val rowPx = with(LocalDensity.current) { RowHeight.toPx() }
+  LaunchedEffect(listState, rowPx) {
+    snapshotFlow { listState.firstVisibleItemIndex * rowPx + listState.firstVisibleItemScrollOffset }
+      .collect { CosmosScroll.offset = it }
+  }
+  val todayVisible by remember {
+    derivedStateOf { listState.layoutInfo.visibleItemsInfo.any { it.index == todayIdx } }
+  }
 
-    // "Tu sesión de hoy" Main Card
-    item {
-      val lang = LocalAppLanguage.current
-      Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-      ) {
-        Column(
-          modifier = Modifier
-            .fillMaxWidth()
-            .padding(20.dp)
-        ) {
-          Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-          ) {
-            Column(modifier = Modifier.weight(1f)) {
-              Text(
-                text = strings.dailySessionTitle,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
-              )
-              Text(
-                text = when (dailySession.completedCount) {
-                  0 -> strings.dailySessionDesc
-                  in 1..2 -> "${dailySession.completedCount}/3"
-                  else -> strings.sessionCompletedTitle
-                },
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 2.dp)
-              )
-            }
-
-            CircularProgressRing(
-              progress = dailySession.completedCount / 3f,
-              text = "${dailySession.completedCount}/3",
-              color = TealPrimary,
-              size = 58.dp
-            )
-          }
-
-          Spacer(modifier = Modifier.height(16.dp))
-
-          // 3 game chips for today's queue
-          Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-          ) {
-            dailySession.gameIds.forEachIndexed { idx, gameId ->
-              val def = GameRegistry.getById(gameId)
-              val isDone = idx < dailySession.completedCount
-              Surface(
-                modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(14.dp),
-                color = if (isDone) EmeraldAccent.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
-              ) {
-                Column(
-                  modifier = Modifier.padding(8.dp),
-                  horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                  Text(text = def?.iconEmoji ?: "🧠", fontSize = 20.sp)
-                  Spacer(modifier = Modifier.height(2.dp))
-                  Text(
-                    text = if (def != null) getGameTitle(def.id, lang, def.title) else "Juego",
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    color = if (isDone) EmeraldAccent else MaterialTheme.colorScheme.onSurface
-                  )
-                }
-              }
-            }
-          }
-
-          Spacer(modifier = Modifier.height(18.dp))
-
-          Button(
-            onClick = { viewModel.startDailySession() },
-            modifier = Modifier
-              .fillMaxWidth()
-              .height(50.dp)
-              .testTag("btn_start_daily_session"),
-            shape = RoundedCornerShape(14.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = TealPrimary)
-          ) {
-            Icon(
-              imageVector = Icons.Default.PlayArrow,
-              contentDescription = null,
-              modifier = Modifier.size(20.dp)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-              text = when {
-                dailySession.completedCount == 0 -> strings.startDailySession
-                dailySession.completedCount < 3 -> strings.continueDailySession
-                else -> strings.trainAnotherRound
-              },
-              style = MaterialTheme.typography.titleSmall,
-              fontWeight = FontWeight.Bold
-            )
-          }
-
-          if (userSettings.notificationsEnabled) {
-            Spacer(modifier = Modifier.height(10.dp))
-            Row(
-              modifier = Modifier.fillMaxWidth(),
-              horizontalArrangement = Arrangement.Center,
-              verticalAlignment = Alignment.CenterVertically
-            ) {
-              Icon(
-                imageVector = Icons.Default.NotificationsActive,
-                contentDescription = null,
-                modifier = Modifier.size(14.dp),
-                tint = TealPrimary
-              )
-              Spacer(modifier = Modifier.width(6.dp))
-              Text(
-                text = "Recordatorio activo para las %02d:%02d".format(userSettings.reminderHour, userSettings.reminderMinute),
-                style = MaterialTheme.typography.labelSmall,
-                color = TealPrimary,
-                fontWeight = FontWeight.Medium
-              )
-            }
-          }
-        }
-      }
-    }
-
-    // Desafíos de la semana (etapa 4 de gamificación): fijos, no aleatorios,
-    // progreso calculado en vivo desde el historial — dan un motivo concreto
-    // para variar (jugar otro dominio, probar Reto) más allá de la racha diaria.
-    item {
-      Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-      ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-          Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-          ) {
-            Text(
-              text = "Desafíos de la semana",
-              style = MaterialTheme.typography.titleSmall,
-              fontWeight = FontWeight.Bold
-            )
-            val completedCount = weeklyChallenges.count { it.isComplete }
-            Surface(
-              shape = RoundedCornerShape(10.dp),
-              color = if (completedCount == weeklyChallenges.size && weeklyChallenges.isNotEmpty())
-                EmeraldAccent.copy(alpha = 0.15f) else MaterialTheme.colorScheme.surfaceVariant
-            ) {
-              Text(
-                text = "$completedCount/${weeklyChallenges.size}",
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Bold,
-                color = if (completedCount == weeklyChallenges.size && weeklyChallenges.isNotEmpty())
-                  EmeraldAccent else MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
-              )
-            }
-          }
-
-          Spacer(modifier = Modifier.height(12.dp))
-
-          weeklyChallenges.forEachIndexed { idx, wc ->
-            if (idx > 0) Spacer(modifier = Modifier.height(10.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-              Text(text = wc.def.iconEmoji, fontSize = 18.sp)
-              Spacer(modifier = Modifier.width(10.dp))
-              Column(modifier = Modifier.weight(1f)) {
-                Text(
-                  text = wc.def.title,
-                  style = MaterialTheme.typography.labelMedium,
-                  fontWeight = FontWeight.SemiBold,
-                  color = if (wc.isComplete) EmeraldAccent else MaterialTheme.colorScheme.onSurface
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                LinearProgressIndicator(
-                  progress = { (wc.progress.toFloat() / wc.def.target).coerceIn(0f, 1f) },
-                  modifier = Modifier
-                    .fillMaxWidth()
-                    .height(6.dp)
-                    .clip(RoundedCornerShape(3.dp)),
-                  color = if (wc.isComplete) EmeraldAccent else TealPrimary,
-                  trackColor = MaterialTheme.colorScheme.surfaceVariant
-                )
-              }
-              Spacer(modifier = Modifier.width(10.dp))
-              if (wc.isComplete) {
-                Icon(
-                  imageVector = Icons.Outlined.CheckCircle,
-                  contentDescription = "Completado",
-                  tint = EmeraldAccent,
-                  modifier = Modifier.size(18.dp)
-                )
-              } else {
-                Text(
-                  text = "${wc.progress}/${wc.def.target}",
-                  style = MaterialTheme.typography.labelSmall,
-                  fontWeight = FontWeight.Bold,
-                  color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-              }
-            }
-          }
-        }
-      }
-    }
-
-    // 7 Days Streak Row
-    item {
-      Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-      ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-          Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-          ) {
-            Text(
-              text = "Actividad últimos 7 días",
-              style = MaterialTheme.typography.titleSmall,
-              fontWeight = FontWeight.Bold
-            )
-            Text(
-              text = if (streak >= 1) "🔥 Racha activa" else "Comienza hoy tu racha",
-              style = MaterialTheme.typography.labelSmall,
-              color = if (streak >= 1) Color(0xFFD97706) else MaterialTheme.colorScheme.onSurfaceVariant
-            )
-          }
-
-          Spacer(modifier = Modifier.height(12.dp))
-
-          Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
-          ) {
-            last7Days.forEach { (dayLetter, played) ->
-              Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-              ) {
-                Box(
-                  modifier = Modifier
-                    .size(36.dp)
-                    .clip(CircleShape)
-                    .background(if (played) TealPrimary else MaterialTheme.colorScheme.surfaceVariant),
-                  contentAlignment = Alignment.Center
-                ) {
-                  if (played) {
-                    Text(text = "✓", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                  }
-                }
-                Text(
-                  text = dayLetter,
-                  style = MaterialTheme.typography.labelSmall,
-                  color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-              }
-            }
-          }
-        }
-      }
-    }
-
-    // 3 Metric Cards with Sparklines & Distinct Accent Colors
-    item {
+  Column(modifier = modifier.fillMaxSize()) {
+    // Cabecera fija: liga, nivel y racha en una sola línea (sin recuadros)
+    Row(
+      modifier = Modifier
+        .fillMaxWidth()
+        .padding(start = 20.dp, end = 20.dp, top = 8.dp),
+      verticalAlignment = Alignment.CenterVertically
+    ) {
+      LeagueShield(tier = tier, size = 26.dp)
+      Spacer(Modifier.width(8.dp))
+      Text(tier.tierName, color = OnNight, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+      Text("  ·  ", color = OnNightDim, fontSize = 15.sp)
+      Text(index?.let { "$it nivel" } ?: "sin nivel", color = OnNight, fontSize = 15.sp)
+      Text("  ·  ", color = OnNightDim, fontSize = 15.sp)
+      Icon(Icons.Default.Whatshot, contentDescription = null, tint = Clay.Sun, modifier = Modifier.size(18.dp))
+      Text("$streak", color = Clay.Sun, fontSize = 15.sp, fontWeight = FontWeight.Bold, modifier = Modifier.testTag("streak_pill"))
+      Spacer(Modifier.weight(1f))
       Text(
-        text = "Resumen de rendimiento",
-        style = MaterialTheme.typography.titleMedium,
-        fontWeight = FontWeight.Bold,
-        color = MaterialTheme.colorScheme.onBackground
+        text = "Desafíos ${weeklyChallenges.count { it.isComplete }}/${weeklyChallenges.size}",
+        color = Clay.Sun,
+        fontSize = 13.sp,
+        fontWeight = FontWeight.SemiBold,
+        modifier = Modifier
+          .clip(RoundedCornerShape(10.dp))
+          .clickable { showChallenges = true }
+          .padding(6.dp)
+      )
+    }
+    Text(
+      text = "Tu camino",
+      color = OnNight,
+      fontSize = 28.sp,
+      fontWeight = FontWeight.Bold,
+      modifier = Modifier.padding(start = 20.dp, top = 6.dp, bottom = 4.dp)
+    )
+
+    BoxWithConstraints(modifier = Modifier.weight(1f).fillMaxWidth()) {
+      val widthPx = with(LocalDensity.current) { maxWidth.toPx() }
+      val camera = with(LocalDensity.current) { 14.dp.toPx() * 8f }
+      LazyColumn(
+        state = listState,
+        modifier = Modifier
+          .fillMaxSize()
+          .graphicsLayer {
+            // Perspectiva "texto de Star Wars": el camino se inclina hacia el horizonte
+            rotationX = PathTilt
+            transformOrigin = TransformOrigin(0.5f, 1f)
+            cameraDistance = camera
+            compositingStrategy = CompositingStrategy.Offscreen
+          }
+          .drawWithContent {
+            drawContent()
+            // Lo lejano se desvanece en las estrellas
+            drawRect(
+              Brush.verticalGradient(0f to Color.Transparent, 0.30f to Color.Black, 0.92f to Color.Black, 1f to Color.Transparent),
+              blendMode = BlendMode.DstIn
+            )
+          },
+        contentPadding = PaddingValues(bottom = 24.dp)
+      ) {
+        items(items.size) { i ->
+          PathRow(
+            index = i,
+            item = items[i],
+            widthPx = widthPx,
+            gameIds = dailySession.gameIds,
+            completedToday = dailySession.completedCount,
+            lang = lang,
+            onStart = { viewModel.startDailySession() },
+            onOpenDay = { dayDetail = it }
+          )
+        }
+      }
+      if (!todayVisible) {
+        ClayPill(
+          text = "Volver a hoy",
+          color = Clay.Sun,
+          modifier = Modifier
+            .align(Alignment.BottomCenter)
+            .padding(bottom = 12.dp)
+            .clickable { scope.launch { listState.animateScrollToItem((todayIdx - 3).coerceAtLeast(0)) } }
+        )
+      }
+    }
+  }
+
+  dayDetail?.let { item ->
+    val results = when (item) {
+      is PathItem.Past -> item.results
+      is PathItem.Today -> item.results
+      else -> emptyList()
+    }
+    val day = when (item) {
+      is PathItem.Past -> item.day
+      is PathItem.Today -> item.day
+      else -> 0L
+    }
+    Dialog(onDismissRequest = { dayDetail = null }) {
+      ClayCard(modifier = Modifier.fillMaxWidth().padding(8.dp), color = Clay.Cream, radius = 28.dp, contentPadding = 20.dp) {
+        Text(dateLabel(day), color = Clay.Ink, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.height(10.dp))
+        if (results.isEmpty()) {
+          Text("Sin partidas este día.", color = Clay.InkSoft, fontSize = 15.sp)
+        } else {
+          results.sortedBy { it.timestamp }.forEach { r ->
+            val def = GameRegistry.getById(r.gameId)
+            Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+              Text(
+                text = if (def != null) getGameTitle(def.id, lang, def.title) else r.gameId,
+                color = Clay.Ink, fontSize = 16.sp, fontWeight = FontWeight.SemiBold
+              )
+              Text("${r.score} pts", color = Clay.Ink, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            }
+          }
+        }
+      }
+    }
+  }
+
+  if (showChallenges) {
+    Dialog(onDismissRequest = { showChallenges = false }) {
+      ClayCard(modifier = Modifier.fillMaxWidth().padding(8.dp), color = Clay.Grape, radius = 28.dp, contentPadding = 20.dp) {
+        Text("Desafíos de la semana", color = Clay.Ink, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.height(12.dp))
+        weeklyChallenges.forEach { wc ->
+          Column(modifier = Modifier.padding(vertical = 6.dp)) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+              Text(wc.def.title, color = Clay.Ink, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+              Text(if (wc.isComplete) "Listo" else "${wc.progress}/${wc.def.target}", color = Clay.Ink, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+            }
+            Box(
+              modifier = Modifier
+                .padding(top = 4.dp)
+                .fillMaxWidth()
+                .height(10.dp)
+                .clip(RoundedCornerShape(5.dp))
+                .background(Color.White.copy(alpha = 0.55f))
+                .border(2.dp, Clay.Ink, RoundedCornerShape(5.dp))
+            ) {
+              Box(
+                modifier = Modifier
+                  .fillMaxWidth((wc.progress.toFloat() / wc.def.target).coerceIn(0.04f, 1f))
+                  .height(10.dp)
+                  .background(if (wc.isComplete) Clay.Lime else Clay.Sun)
+              )
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+private fun dateLabel(day: Long): String {
+  val f = SimpleDateFormat("EEE d MMM", Locale("es")).apply { timeZone = TimeZone.getTimeZone("UTC") }
+  return f.format(Date(day * DAY_MS)).replaceFirstChar { it.uppercase() }
+}
+
+@Composable
+private fun PathRow(
+  index: Int,
+  item: PathItem,
+  widthPx: Float,
+  gameIds: List<String>,
+  completedToday: Int,
+  lang: com.example.model.AppLanguage,
+  onStart: () -> Unit,
+  onOpenDay: (PathItem) -> Unit
+) {
+  val density = LocalDensity.current
+  val hPx = with(density) { RowHeight.toPx() }
+  val x = fx(index) * widthPx
+  val xTop = (fx(index - 1) + fx(index)) / 2f * widthPx
+  val xBot = (fx(index) + fx(index + 1)) / 2f * widthPx
+  val onLeftHalf = x < widthPx / 2f
+  val done = (item is PathItem.Past && item.results.isNotEmpty()) || (item is PathItem.Today && completedToday >= 3)
+  val trail = when {
+    item is PathItem.Future -> Color.White.copy(alpha = 0.25f)
+    item is PathItem.Past && item.results.isNotEmpty() -> Clay.Lime.copy(alpha = 0.65f)
+    item is PathItem.Today -> Clay.Sun.copy(alpha = 0.8f)
+    else -> Color.White.copy(alpha = 0.16f)
+  }
+
+  Box(modifier = Modifier.fillMaxWidth().height(RowHeight)) {
+    Canvas(modifier = Modifier.matchParentSize()) {
+      val p = Path().apply {
+        moveTo(xTop, 0f)
+        cubicTo(xTop, hPx * 0.25f, x, hPx * 0.25f, x, hPx / 2f)
+        cubicTo(x, hPx * 0.75f, xBot, hPx * 0.75f, xBot, hPx)
+      }
+      drawPath(
+        p, trail,
+        style = Stroke(
+          width = 5.dp.toPx(), cap = StrokeCap.Round,
+          pathEffect = PathEffect.dashPathEffect(floatArrayOf(1f, 11.dp.toPx()))
+        )
       )
     }
 
-    item {
-      Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
-      ) {
-        // Metric 1: Sesiones (Teal)
-        Card(
-          modifier = Modifier.weight(1f),
-          shape = RoundedCornerShape(18.dp),
-          colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-        ) {
-          Column(modifier = Modifier.padding(14.dp)) {
-            Icon(
-              imageVector = Icons.Outlined.FitnessCenter,
-              contentDescription = null,
-              tint = TealPrimary,
-              modifier = Modifier.size(22.dp)
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-              text = "${history.size}",
-              style = MaterialTheme.typography.titleLarge,
-              fontWeight = FontWeight.Black,
-              color = MaterialTheme.colorScheme.onSurface
-            )
-            Text(
-              text = "Sesiones",
-              style = MaterialTheme.typography.labelSmall,
-              color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Sparkline(data = sessionsSparkline, lineColor = TealPrimary)
-          }
-        }
-
-        // Metric 2: Minutos (Ámbar)
-        Card(
-          modifier = Modifier.weight(1f),
-          shape = RoundedCornerShape(18.dp),
-          colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-        ) {
-          Column(modifier = Modifier.padding(14.dp)) {
-            Icon(
-              imageVector = Icons.Outlined.Schedule,
-              contentDescription = null,
-              tint = Color(0xFFD97706),
-              modifier = Modifier.size(22.dp)
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-              text = "${history.size * 4}",
-              style = MaterialTheme.typography.titleLarge,
-              fontWeight = FontWeight.Black,
-              color = MaterialTheme.colorScheme.onSurface
-            )
-            Text(
-              text = "Minutos aprox.",
-              style = MaterialTheme.typography.labelSmall,
-              color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            // Uniform sparkline
-            Sparkline(data = sessionsSparkline, lineColor = Color(0xFFD97706))
-          }
-        }
-
-        // Metric 3: Última puntuación (Esmeralda)
-        Card(
-          modifier = Modifier.weight(1f),
-          shape = RoundedCornerShape(18.dp),
-          colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-        ) {
-          val lastScore = history.firstOrNull()?.score ?: 0
-          Column(modifier = Modifier.padding(14.dp)) {
-            Icon(
-              imageVector = Icons.Outlined.Star,
-              contentDescription = null,
-              tint = EmeraldAccent,
-              modifier = Modifier.size(22.dp)
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-              text = "$lastScore",
-              style = MaterialTheme.typography.titleLarge,
-              fontWeight = FontWeight.Black,
-              color = MaterialTheme.colorScheme.onSurface
-            )
-            Text(
-              text = "Última puntuación",
-              style = MaterialTheme.typography.labelSmall,
-              color = MaterialTheme.colorScheme.onSurfaceVariant,
-              maxLines = 1
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Sparkline(data = scoresSparkline, lineColor = EmeraldAccent)
-          }
-        }
-      }
+    // Nodo
+    val nodeR = when {
+      item is PathItem.Today -> 32.dp
+      item is PathItem.Future && item.flagTarget != null -> 24.dp
+      done -> 20.dp
+      else -> 7.dp
     }
-
-    // Quick Games Carousel
-    item {
-      Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-      ) {
-        Text(
-          text = "Explorar juegos",
-          style = MaterialTheme.typography.titleMedium,
-          fontWeight = FontWeight.Bold
-        )
-        TextButton(onClick = onNavigateToGames) {
-          Text("Ver todos", color = TealPrimary, fontWeight = FontWeight.SemiBold)
-          Spacer(modifier = Modifier.width(4.dp))
-          Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, modifier = Modifier.size(16.dp), tint = TealPrimary)
-        }
-      }
-    }
-
-    item {
-      LazyRow(
-        horizontalArrangement = Arrangement.spacedBy(14.dp)
-      ) {
-        items(GameRegistry.allGames.take(4)) { game ->
-          Card(
+    val nodeRpx = with(density) { nodeR.toPx() }
+    Box(
+      modifier = Modifier
+        .offset { IntOffset((x - nodeRpx).roundToInt(), (hPx / 2f - nodeRpx).roundToInt()) }
+        .size(nodeR * 2),
+      contentAlignment = Alignment.Center
+    ) {
+      when {
+        item is PathItem.Today -> TodayNode(done = done, onClick = onStart)
+        item is PathItem.Future && item.flagTarget != null ->
+          Box(
+            modifier = Modifier.fillMaxSize().clip(CircleShape).background(Clay.Coral).border(3.dp, Clay.Ink, CircleShape),
+            contentAlignment = Alignment.Center
+          ) { Icon(Icons.Default.Flag, contentDescription = "Hito de racha", tint = Color.White, modifier = Modifier.size(24.dp)) }
+        item is PathItem.Future ->
+          Box(modifier = Modifier.fillMaxSize().clip(CircleShape).background(Color.White.copy(alpha = 0.18f)).border(2.dp, Color.White.copy(alpha = 0.3f), CircleShape))
+        done ->
+          Box(
             modifier = Modifier
-              .width(200.dp)
-              .clip(RoundedCornerShape(20.dp))
-              .clickable { viewModel.launchGame(game.id) }
-              .testTag("quick_game_${game.id}"),
-            shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-          ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-              Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-              ) {
-                Text(text = game.iconEmoji, fontSize = 28.sp)
-                DomainChip(domain = game.domain)
-              }
-              Spacer(modifier = Modifier.height(12.dp))
-              Text(
-                text = game.title,
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-              )
-              Text(
-                text = game.subtitle,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(top = 2.dp)
-              )
-            }
-          }
+              .fillMaxSize()
+              .clip(CircleShape)
+              .background(Clay.Lime)
+              .border(3.dp, Clay.Ink, CircleShape)
+              .clickable { onOpenDay(item) },
+            contentAlignment = Alignment.Center
+          ) { Icon(Icons.Default.Check, contentDescription = null, tint = Clay.Ink, modifier = Modifier.size(22.dp)) }
+        else ->
+          Box(modifier = Modifier.fillMaxSize().clip(CircleShape).background(Color.White.copy(alpha = 0.22f)))
+      }
+    }
+
+    // Etiqueta al lado del nodo (hacia el lado con más espacio)
+    val labelW = 150.dp
+    val gap = 14.dp
+    val labelWpx = with(density) { labelW.toPx() }
+    val gapPx = with(density) { gap.toPx() }
+    val lx = if (onLeftHalf) x + nodeRpx + gapPx else x - nodeRpx - gapPx - labelWpx
+    Column(
+      modifier = Modifier
+        .offset { IntOffset(lx.roundToInt(), (hPx / 2f - with(density) { 24.dp.toPx() }).roundToInt()) }
+        .width(labelW),
+      horizontalAlignment = if (onLeftHalf) Alignment.Start else Alignment.End
+    ) {
+      val align = if (onLeftHalf) TextAlign.Start else TextAlign.End
+      when (item) {
+        is PathItem.Today -> {
+          val next = if (completedToday < 3) gameIds.getOrNull(completedToday) else null
+          val def = next?.let { GameRegistry.getById(it) }
+          Text(if (done) "Hoy" else "Ahora", color = OnNightDim, fontSize = 12.sp, textAlign = align)
+          Text(
+            text = if (done) "¡Sesión completa!" else if (def != null) getGameTitle(def.id, lang, def.title) else "Entrenar",
+            color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold, lineHeight = 22.sp,
+            maxLines = 2, overflow = TextOverflow.Ellipsis, textAlign = align
+          )
+          Text(
+            text = if (done) "Toca para otra ronda" else "Falta${if (3 - completedToday == 1) "" else "n"} ${3 - completedToday} de 3",
+            color = OnNightDim, fontSize = 12.sp, textAlign = align
+          )
+        }
+        is PathItem.Past -> if (item.results.isNotEmpty()) {
+          Text(dateLabel(item.day), color = OnNightDim, fontSize = 12.sp, textAlign = align)
+          Text(
+            "${item.results.size} ${if (item.results.size == 1) "juego" else "juegos"}",
+            color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, textAlign = align
+          )
+        }
+        is PathItem.Future -> if (item.flagTarget != null) {
+          Text("Racha de ${item.flagTarget} días", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold, textAlign = align)
+          Text("faltan ${item.remaining}", color = Clay.Sun, fontSize = 13.sp, textAlign = align)
         }
       }
+    }
+  }
+}
+
+@Composable
+private fun TodayNode(done: Boolean, onClick: () -> Unit) {
+  val pulse = rememberInfiniteTransition(label = "todayPulse")
+  val s by pulse.animateFloat(
+    initialValue = 1f, targetValue = 1.28f,
+    animationSpec = infiniteRepeatable(tween(1400), RepeatMode.Reverse), label = "s"
+  )
+  Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+    if (!done) {
+      Box(modifier = Modifier.fillMaxSize().scale(s).border(3.dp, Clay.Sun.copy(alpha = 0.55f * (1.4f - s)), CircleShape))
+    }
+    Box(
+      modifier = Modifier
+        .fillMaxSize()
+        .clip(CircleShape)
+        .background(if (done) Clay.Lime else Clay.Sun)
+        .border(3.5.dp, Clay.Ink, CircleShape)
+        .clickable(onClick = onClick)
+        .testTag("btn_start_daily_session"),
+      contentAlignment = Alignment.Center
+    ) {
+      Icon(
+        if (done) Icons.Default.Check else Icons.Default.PlayArrow,
+        contentDescription = "Entrenar",
+        tint = Clay.Ink,
+        modifier = Modifier.size(36.dp)
+      )
     }
   }
 }

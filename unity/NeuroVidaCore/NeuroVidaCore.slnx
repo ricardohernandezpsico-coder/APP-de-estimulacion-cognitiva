@@ -1,0 +1,17 @@
+﻿<Solution>
+  <Project Path="NeuroVida.Games.csproj" />
+  <Project Path="NeuroVida.Games.RutaTesoro.Tests.csproj" />
+  <Project Path="NeuroVida.Contracts.csproj" />
+  <Project Path="NeuroVida.Bootstrap.Editor.csproj" />
+  <Project Path="NeuroVida.Games.Parejas.Tests.csproj" />
+  <Project Path="NeuroVida.Bootstrap.csproj" />
+  <Project Path="NeuroVida.Games.Comparacion.Tests.csproj" />
+  <Project Path="NeuroVida.Games.Anagramas.Tests.csproj" />
+  <Project Path="NeuroVida.Games.Common.Tests.csproj" />
+  <Project Path="NeuroVida.Games.CambioChip.Tests.csproj" />
+  <Project Path="NeuroVida.Games.Stroop.Tests.csproj" />
+  <Project Path="NeuroVida.Games.Secuencia.Tests.csproj" />
+  <Project Path="NeuroVida.Games.Calculo.Tests.csproj" />
+  <Project Path="NeuroVida.Bridge.csproj" />
+  <Project Path="NeuroVida.Games.Series.Tests.csproj" />
+</Solution>

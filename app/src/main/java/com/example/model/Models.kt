@@ -133,7 +133,9 @@ data class GamePlayResult(
   val totalTrials: Int,
   val timed: Boolean,
   val level: Int,
-  val timestamp: Long = System.currentTimeMillis()
+  val timestamp: Long = System.currentTimeMillis(),
+  // Rating final del DDA común (0..1) informado por los juegos Unity; null en los demás.
+  val endRating: Float? = null
 )
 
 data class DailySessionState(
@@ -260,8 +262,9 @@ enum class RankTier(val tierName: String, val minRating: Int, val icon: String, 
   PLATA("Plata", 250, "🥈", Color(0xFF9CA3AF)),
   ORO("Oro", 500, "🥇", Color(0xFFF59E0B)),
   PLATINO("Platino", 750, "💠", Color(0xFF22D3EE)),
-  DIAMANTE("Diamante", 1000, "💎", Color(0xFF60A5FA)),
-  MAESTRO("Maestro", 1250, "👑", Color(0xFFA855F7));
+  ESMERALDA("Esmeralda", 1000, "🟢", Color(0xFF17C97A)),
+  DIAMANTE("Diamante", 1250, "💎", Color(0xFF60A5FA)),
+  MAESTRO("Maestro", 1500, "👑", Color(0xFFA855F7));
 
   companion object {
     const val DIVISION_SIZE = 50

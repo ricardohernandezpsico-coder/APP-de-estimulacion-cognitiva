@@ -16,3 +16,27 @@
 local.properties
 .env
 debug.keystore
+
+# --- Unity (unity/NeuroVidaCore, Fase 1 del roadmap a Unity -- ver CLAUDE.md) ---
+# Caches/artefactos regenerables del Editor -- nunca commitear (Library/ en particular
+# puede pesar varios GB). Lo que SÍ se commitea: Assets/, Packages/manifest.json,
+# ProjectSettings/.
+unity/NeuroVidaCore/Library/
+unity/NeuroVidaCore/Temp/
+unity/NeuroVidaCore/Logs/
+unity/NeuroVidaCore/obj/
+unity/NeuroVidaCore/.vs/
+unity/NeuroVidaCore/*.csproj
+unity/NeuroVidaCore/*.sln
+unity/NeuroVidaCore/UserSettings/
+unity/NeuroVidaCore/Packages/packages-lock.json
+
+# Export "Unity as a Library" completo (615MB) -- se regenera con
+# NeuroVida > Exportar como librería Android (Unity Editor) cada vez que hace falta,
+# nunca a mano. unityLibrary/build.gradle referencia esta carpeta directo desde
+# settings.gradle.kts/gradle.properties del proyecto Android.
+unity/AndroidExport/
+
+# Logs de verificación de esta sesión (batch mode de Unity, resultados de tests) --
+# reproducibles, no hace falta versionarlos.
+unity/test-results/

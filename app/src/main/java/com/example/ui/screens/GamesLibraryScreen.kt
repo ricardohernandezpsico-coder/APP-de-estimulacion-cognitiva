@@ -1,6 +1,7 @@
 package com.example.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -19,6 +20,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
@@ -60,186 +64,92 @@ fun GamesLibraryScreen(
     }
   }
 
-  Box(
-    modifier = modifier
-      .fillMaxSize()
-      .background(MaterialTheme.colorScheme.background)
-  ) {
+  Box(modifier = modifier.fillMaxSize()) {
     val currentLang = LocalAppLanguage.current
     LazyColumn(
       modifier = Modifier
         .fillMaxSize()
-        .padding(horizontal = 20.dp),
-      contentPadding = PaddingValues(top = 16.dp, bottom = 96.dp),
-      verticalArrangement = Arrangement.spacedBy(16.dp)
+        .padding(horizontal = 16.dp),
+      contentPadding = PaddingValues(top = 12.dp, bottom = 28.dp),
+      verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
       item {
-        Column {
+        Column(modifier = Modifier.padding(horizontal = 6.dp)) {
           Text(
             text = strings.gamesLibraryTitle,
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Black,
-            color = MaterialTheme.colorScheme.onBackground
+            color = Color(0xFFEAF0FF),
+            fontSize = 28.sp,
+            fontWeight = FontWeight.Bold
           )
           Text(
-            text = strings.gamesLibrarySubtitle,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            text = "Elige un planeta y entrena",
+            color = Color(0xFFB4BFEA),
+            fontSize = 14.sp
           )
         }
       }
 
-      // Domain Filter Chips
+      // Dominios como texto con punto de color (sin recuadros): toca uno para filtrar el mapa
       item {
         LazyRow(
-          horizontalArrangement = Arrangement.spacedBy(8.dp),
-          modifier = Modifier.fillMaxWidth()
+          horizontalArrangement = Arrangement.spacedBy(4.dp),
+          modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 4.dp)
         ) {
           item {
-            FilterChip(
+            DomainTab(
+              label = strings.filterAll,
+              color = Color.White,
               selected = selectedDomainFilter == null,
               onClick = { selectedDomainFilter = null },
-              label = { Text(strings.filterAll) },
-              shape = RoundedCornerShape(14.dp),
-              colors = FilterChipDefaults.filterChipColors(
-                selectedContainerColor = TealPrimary,
-                selectedLabelColor = Color.White
-              ),
-              modifier = Modifier.testTag("filter_all")
+              tag = "filter_all"
             )
           }
           items(DomainType.values()) { domain ->
             val isSelected = selectedDomainFilter == domain
-            FilterChip(
+            DomainTab(
+              label = getDomainName(domain, currentLang),
+              color = domain.color,
               selected = isSelected,
               onClick = { selectedDomainFilter = if (isSelected) null else domain },
-              label = { Text(getDomainName(domain, currentLang)) },
-              shape = RoundedCornerShape(14.dp),
-              colors = FilterChipDefaults.filterChipColors(
-                selectedContainerColor = domain.color,
-                selectedLabelColor = Color.White
-              ),
-              modifier = Modifier.testTag("filter_${domain.name.lowercase()}")
+              tag = "filter_${domain.name.lowercase()}"
             )
           }
         }
       }
 
-      // Games List
-      items(filteredGames) { game ->
-        val level = gameLevels[game.id] ?: 1
-        val levelTier = LevelTier.fromLevel(level)
-        val rankInfo = gameRanks.find { it.gameId == game.id } ?: GameRankInfo(game.id, 0)
-        val bestScore = history.filter { it.gameId == game.id }.maxOfOrNull { it.score }
-        val localizedGameTitle = getGameTitle(game.id, currentLang, game.title)
-
-        Card(
-          modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(22.dp))
-            .clickable { gameToIntro = game }
-            .testTag("game_card_${game.id}"),
-          shape = RoundedCornerShape(22.dp),
-          colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-          elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+      // Mapa de planetas: filas de 3, con la columna central desplazada hacia abajo (constelacion)
+      val rows = filteredGames.chunked(3)
+      items(rows.size) { r ->
+        val rowGames = rows[r]
+        Row(
+          modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
+          horizontalArrangement = Arrangement.SpaceEvenly,
+          verticalAlignment = Alignment.Top
         ) {
-          Row(
-            modifier = Modifier
-              .fillMaxWidth()
-              .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-          ) {
-            // Icon
-            Surface(
-              modifier = Modifier.size(60.dp),
-              shape = RoundedCornerShape(18.dp),
-              color = game.domain.color.copy(alpha = 0.14f)
+          for (c in 0 until 3) {
+            val game = rowGames.getOrNull(c)
+            Box(
+              modifier = Modifier
+                .weight(1f)
+                .padding(top = if (c == 1) 44.dp else 0.dp),
+              contentAlignment = Alignment.TopCenter
             ) {
-              Box(contentAlignment = Alignment.Center) {
-                Text(text = game.iconEmoji, fontSize = 28.sp)
-              }
-            }
-
-            Spacer(modifier = Modifier.width(16.dp))
-
-            Column(modifier = Modifier.weight(1f)) {
-              Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-              ) {
-                Text(
-                  text = localizedGameTitle,
-                  style = MaterialTheme.typography.titleMedium,
-                  fontWeight = FontWeight.Bold,
-                  color = MaterialTheme.colorScheme.onSurface
+              if (game != null) {
+                val level = gameLevels[game.id] ?: 1
+                val rankInfo = gameRanks.find { it.gameId == game.id } ?: GameRankInfo(game.id, 0)
+                Planet(
+                  game = game,
+                  title = getGameTitle(game.id, currentLang, game.title),
+                  level = level,
+                  rank = rankInfo,
+                  best = history.filter { it.gameId == game.id }.maxOfOrNull { it.score },
+                  onClick = { gameToIntro = game }
                 )
               }
-
-              Text(
-                text = game.subtitle,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(top = 2.dp)
-              )
-
-              Spacer(modifier = Modifier.height(8.dp))
-
-              Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-              ) {
-                Surface(
-                  shape = RoundedCornerShape(8.dp),
-                  color = game.domain.color.copy(alpha = 0.12f)
-                ) {
-                  Text(
-                    text = "${strings.levelPrefix} $level · ${levelTier.tierName}",
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = game.domain.color,
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
-                  )
-                }
-
-                Surface(
-                  shape = RoundedCornerShape(8.dp),
-                  color = rankInfo.tier.color.copy(alpha = 0.14f)
-                ) {
-                  Text(
-                    text = "${rankInfo.tier.icon} ${rankInfo.label}",
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = rankInfo.tier.color,
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
-                  )
-                }
-              }
-
-              if (bestScore != null) {
-                Text(
-                  text = "${strings.scoreLabel}: $bestScore",
-                  style = MaterialTheme.typography.labelSmall,
-                  color = MaterialTheme.colorScheme.onSurfaceVariant,
-                  modifier = Modifier.padding(top = 4.dp)
-                )
-              }
-            }
-
-            IconButton(
-              onClick = { gameToIntro = game },
-              modifier = Modifier.testTag("btn_play_${game.id}")
-            ) {
-              Icon(
-                imageVector = Icons.Default.PlayArrow,
-                contentDescription = "${strings.playButton} $localizedGameTitle",
-                tint = game.domain.color,
-                modifier = Modifier.size(28.dp)
-              )
             }
           }
         }
+        Spacer(Modifier.height(if (rowGames.size == 3) 40.dp else 8.dp))
       }
     }
 
@@ -258,13 +168,10 @@ fun GamesLibraryScreen(
       val effectiveTier = LevelTier.fromLevel(effectiveLevel)
 
       Dialog(onDismissRequest = { gameToIntro = null }) {
-        Card(
+        com.example.ui.theme.ClayLightCard(
           modifier = Modifier
             .fillMaxWidth()
-            .padding(16.dp),
-          shape = RoundedCornerShape(24.dp),
-          colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-          elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
+            .padding(16.dp)
         ) {
           Column(
             modifier = Modifier
@@ -415,5 +322,105 @@ fun GamesLibraryScreen(
         }
       }
     }
+  }
+}
+
+@Composable
+private fun DomainTab(label: String, color: Color, selected: Boolean, onClick: () -> Unit, tag: String) {
+  Row(
+    modifier = Modifier
+      .clip(RoundedCornerShape(14.dp))
+      .clickable(onClick = onClick)
+      .padding(horizontal = 10.dp, vertical = 8.dp)
+      .testTag(tag),
+    verticalAlignment = Alignment.CenterVertically
+  ) {
+    Box(
+      modifier = Modifier
+        .size(if (selected) 12.dp else 9.dp)
+        .clip(CircleShape)
+        .background(color)
+    )
+    Spacer(Modifier.width(6.dp))
+    Text(
+      text = label,
+      color = if (selected) Color.White else Color(0xFFB4BFEA),
+      fontSize = 14.sp,
+      fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium
+    )
+  }
+}
+
+/** Un juego como "planeta": esfera de arcilla del color de su dominio con resplandor, nombre y nivel debajo. */
+@Composable
+private fun Planet(
+  game: GameDefinition,
+  title: String,
+  level: Int,
+  rank: GameRankInfo,
+  best: Int?,
+  onClick: () -> Unit
+) {
+  val ink = Clay.Ink
+  val size = 84.dp
+  Column(
+    horizontalAlignment = Alignment.CenterHorizontally,
+    modifier = Modifier
+      .clip(RoundedCornerShape(20.dp))
+      .clickable(onClick = onClick)
+      .padding(4.dp)
+      .testTag("game_card_${game.id}")
+  ) {
+    Box(
+      modifier = Modifier
+        .size(size + 28.dp)
+        .drawBehind {
+          // Resplandor del dominio
+          drawCircle(
+            Brush.radialGradient(listOf(game.domain.color.copy(alpha = 0.38f), Color.Transparent), center, this.size.minDimension / 2f),
+            radius = this.size.minDimension / 2f
+          )
+          // Sombra dura de arcilla
+          drawCircle(ink, radius = size.toPx() / 2f, center = Offset(center.x, center.y + 4.dp.toPx()))
+        },
+      contentAlignment = Alignment.Center
+    ) {
+      Box(
+        modifier = Modifier
+          .size(size)
+          .clip(CircleShape)
+          .background(game.domain.color)
+          .border(3.dp, ink, CircleShape),
+        contentAlignment = Alignment.Center
+      ) {
+        // Brillo superior
+        Box(
+          modifier = Modifier
+            .align(Alignment.TopCenter)
+            .padding(top = 7.dp)
+            .size(width = 38.dp, height = 12.dp)
+            .clip(RoundedCornerShape(50))
+            .background(Color.White.copy(alpha = 0.32f))
+        )
+        Text(game.iconEmoji, fontSize = 34.sp)
+      }
+    }
+    Text(
+      text = title,
+      color = Color.White,
+      fontSize = 14.sp,
+      fontWeight = FontWeight.Bold,
+      textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+      maxLines = 2,
+      overflow = TextOverflow.Ellipsis,
+      lineHeight = 16.sp,
+      modifier = Modifier.padding(top = 2.dp).width(104.dp)
+    )
+    Text(
+      text = "Nivel $level · ${rank.tier.tierName}",
+      color = rank.tier.color,
+      fontSize = 11.sp,
+      fontWeight = FontWeight.SemiBold
+    )
   }
 }

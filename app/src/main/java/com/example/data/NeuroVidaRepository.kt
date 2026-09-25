@@ -89,6 +89,21 @@ class NeuroVidaRepository(
       initialValue = GameRegistry.allGames.associate { it.id to 0 }
     )
 
+  // 3b'. Rating del DDA común por juego (0..1; -1 = sin dato), para arrancar los juegos Unity donde
+  // quedó el usuario (ver docs/DDA-comun.md).
+  val gameDdaRating: StateFlow<Map<String, Float>> = gameProgressDao.getAllProgress()
+    .map { list ->
+      val map = mutableMapOf<String, Float>()
+      GameRegistry.allGames.forEach { g -> map[g.id] = -1f }
+      list.forEach { p -> map[p.gameId] = p.ddaRating }
+      map
+    }
+    .stateIn(
+      scope = repositoryScope,
+      started = SharingStarted.Eagerly,
+      initialValue = GameRegistry.allGames.associate { it.id to -1f }
+    )
+
   // 3c. Reactive ELO Rank Map from Room — ranking competitivo por juego (ver
   // RankTier/GameRankInfo en Models.kt), independiente de nivel/masteryStreak.
   val gameRanks: StateFlow<Map<String, Int>> = gameProgressDao.getAllProgress()
@@ -427,6 +442,7 @@ class NeuroVidaRepository(
       currentLevel = newLevel,
       masteryStreak = newMastery,
       eloRating = newRating,
+      ddaRating = result.endRating?.let { blendDdaRating(currentProgress.ddaRating, it) } ?: currentProgress.ddaRating,
       highestScore = maxOf(currentProgress.highestScore, result.score),
       totalGamesPlayed = currentProgress.totalGamesPlayed + 1,
       lastPlayedTimestamp = result.timestamp

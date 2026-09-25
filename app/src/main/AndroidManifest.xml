@@ -6,6 +6,7 @@
     <uses-permission android:name="android.permission.VIBRATE" />
 
     <application
+        android:name=".NeuroVidaApplication"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
@@ -13,7 +14,8 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.MyApplication">
+        android:theme="@style/Theme.MyApplication"
+        tools:replace="android:allowBackup">
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -25,6 +27,25 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- unityLibrary (Fase 1 del roadmap, ver NeuroVida/CLAUDE.md) declara esta
+             Activity con su propio intent-filter LAUNCHER (arrancaría como un ícono
+             aparte en el launcher del sistema): se pisa acá para que solo MainActivity
+             sea la puerta de entrada de la app; se lanza explícitamente por Intent desde
+             el código nativo cuando corresponda. allowBackup se pisa arriba porque
+             unityLibrary declara "false" y el merger de manifests no resuelve solo un
+             valor distinto al del host. -->
+        <activity
+            android:name="com.unity3d.player.appui.AppUIGameActivity"
+            android:exported="false"
+            android:process=":unity"
+            tools:node="merge"
+            tools:replace="android:exported">
+            <intent-filter tools:node="removeAll" />
+        </activity>
+        <receiver
+            android:name=".bridge.UnityResultReceiver"
+            android:exported="false" />
     </application>
 
 </manifest>

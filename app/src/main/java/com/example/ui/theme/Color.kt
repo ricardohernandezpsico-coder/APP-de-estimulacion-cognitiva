@@ -3,11 +3,11 @@ package com.example.ui.theme
 import androidx.compose.ui.graphics.Color
 
 // NeuroVida Brand Palette (Teal & Emerald)
-val TealPrimary = Color(0xFF0F766E)
-val TealPrimaryVariant = Color(0xFF115E59)
-val TealAccent = Color(0xFF14B8A6)
-val TealLight = Color(0xFFCCFBF1)
-val TealDark = Color(0xFF042F2E)
+val TealPrimary = Color(0xFF5B9BFF) // azul electrico (marca)
+val TealPrimaryVariant = Color(0xFF3D7BFF)
+val TealAccent = Color(0xFFFF8A3D) // naranja (acento)
+val TealLight = Color(0xFFDCE8FF)
+val TealDark = Color(0xFF0C1442)
 
 val EmeraldAccent = Color(0xFF10B981)
 val MintBackground = Color(0xFFF0FDF4)

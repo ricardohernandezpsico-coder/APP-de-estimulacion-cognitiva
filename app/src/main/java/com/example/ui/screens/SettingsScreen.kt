@@ -1157,6 +1157,209 @@ fun SettingsScreen(
       }
     }
 
+    // Debug: piloto de Secuencia Lumínica en Unity (Fase 1 del roadmap, ver
+    // NeuroVida/CLAUDE.md). Solo en builds debug -- requiere dispositivo ARM64 real, no
+    // corre en el emulador x86_64 que usa hoy el proyecto para pruebas.
+    if (com.example.BuildConfig.DEBUG) {
+      OutlinedButton(
+        onClick = {
+          com.example.bridge.UnityGameLauncher.launchSecuenciaLuminica(
+            context = context,
+            userId = userSettings.id.toString(),
+            level = 1,
+            baseIntensity = 0,
+            timed = false,
+            ageBand = ageBand
+          )
+        },
+        shape = RoundedCornerShape(14.dp),
+        modifier = Modifier
+          .fillMaxWidth()
+          .testTag("btn_debug_unity_secuencia")
+      ) {
+        Text("[Debug] Probar Secuencia Lumínica en Unity")
+      }
+
+      Spacer(modifier = Modifier.height(12.dp))
+
+      // Piloto de Fase 2 (ver NeuroVida/CLAUDE.md) -- mismo criterio que el botón de
+      // Secuencia Lumínica de arriba.
+      OutlinedButton(
+        onClick = {
+          com.example.bridge.UnityGameLauncher.launchParejasOcultas(
+            context = context,
+            userId = userSettings.id.toString(),
+            level = 1,
+            baseIntensity = 0,
+            timed = false,
+            ageBand = ageBand
+          )
+        },
+        shape = RoundedCornerShape(14.dp),
+        modifier = Modifier
+          .fillMaxWidth()
+          .testTag("btn_debug_unity_parejas")
+      ) {
+        Text("[Debug] Probar Parejas Ocultas en Unity")
+      }
+
+      Spacer(modifier = Modifier.height(12.dp))
+
+      // "Tinta o Palabra" (Stroop) en Unity -- mismo criterio que los botones de arriba.
+      OutlinedButton(
+        onClick = {
+          com.example.bridge.UnityGameLauncher.launchStroop(
+            context = context,
+            userId = userSettings.id.toString(),
+            level = 4, // desde el nivel 4 la regla cambia (tinta/palabra) -- así se ve el cartel que se voltea,
+            baseIntensity = 0,
+            timed = true, // modo Reto: 60 s sin límite de ensayos (sin reloj = 12 ensayos),
+            ageBand = ageBand
+          )
+        },
+        shape = RoundedCornerShape(14.dp),
+        modifier = Modifier
+          .fillMaxWidth()
+          .testTag("btn_debug_unity_stroop")
+      ) {
+        Text("[Debug] Probar Tinta o Palabra en Unity (Reto 60 s)")
+      }
+
+      Spacer(modifier = Modifier.height(12.dp))
+
+      // "Comparación Instantánea" en Unity -- modo Reto (60 s) para verlo con el reloj.
+      OutlinedButton(
+        onClick = {
+          com.example.bridge.UnityGameLauncher.launchComparacion(
+            context = context,
+            userId = userSettings.id.toString(),
+            level = 2,
+            baseIntensity = 0,
+            timed = true,
+            ageBand = ageBand
+          )
+        },
+        shape = RoundedCornerShape(14.dp),
+        modifier = Modifier
+          .fillMaxWidth()
+          .testTag("btn_debug_unity_comparacion")
+      ) {
+        Text("[Debug] Probar Comparación en Unity (Reto 60 s)")
+      }
+
+      Spacer(modifier = Modifier.height(12.dp))
+
+      // "Cambio de Chip" en Unity -- nivel 2 (la regla cambia cada 3 ensayos) en modo Reto.
+      OutlinedButton(
+        onClick = {
+          com.example.bridge.UnityGameLauncher.launchCambioChip(
+            context = context,
+            userId = userSettings.id.toString(),
+            level = 2,
+            baseIntensity = 0,
+            timed = true,
+            ageBand = ageBand
+          )
+        },
+        shape = RoundedCornerShape(14.dp),
+        modifier = Modifier
+          .fillMaxWidth()
+          .testTag("btn_debug_unity_cambiochip")
+      ) {
+        Text("[Debug] Probar Cambio de Chip en Unity (Reto 60 s)")
+      }
+
+      Spacer(modifier = Modifier.height(12.dp))
+
+      // "Ruta del Tesoro" en Unity -- con reloj para ver la barra de tiempo al buscar.
+      OutlinedButton(
+        onClick = {
+          com.example.bridge.UnityGameLauncher.launchRutaTesoro(
+            context = context,
+            userId = userSettings.id.toString(),
+            level = 1,
+            baseIntensity = 0,
+            timed = true,
+            ageBand = ageBand
+          )
+        },
+        shape = RoundedCornerShape(14.dp),
+        modifier = Modifier
+          .fillMaxWidth()
+          .testTag("btn_debug_unity_rutatesoro")
+      ) {
+        Text("[Debug] Probar Ruta del Tesoro en Unity")
+      }
+
+      Spacer(modifier = Modifier.height(12.dp))
+
+      // "Detective de Series" en Unity -- modo Reto (120 s) para ver reloj y subida de nivel.
+      OutlinedButton(
+        onClick = {
+          com.example.bridge.UnityGameLauncher.launchSeries(
+            context = context,
+            userId = userSettings.id.toString(),
+            level = 1, // la dificultad sube sola desde lo más fácil
+            baseIntensity = 0,
+            timed = true,
+            ageBand = ageBand
+          )
+        },
+        shape = RoundedCornerShape(14.dp),
+        modifier = Modifier
+          .fillMaxWidth()
+          .testTag("btn_debug_unity_series")
+      ) {
+        Text("[Debug] Probar Detective de Series en Unity (Reto 120 s)")
+      }
+
+      Spacer(modifier = Modifier.height(12.dp))
+
+      // "Cálculo Sereno" en Unity -- modo Reto (90 s): la burbuja cae y el nivel sube al acertar.
+      OutlinedButton(
+        onClick = {
+          com.example.bridge.UnityGameLauncher.launchCalculo(
+            context = context,
+            userId = userSettings.id.toString(),
+            level = 1, // la dificultad sube sola desde lo más fácil
+            baseIntensity = 0,
+            timed = true,
+            ageBand = ageBand
+          )
+        },
+        shape = RoundedCornerShape(14.dp),
+        modifier = Modifier
+          .fillMaxWidth()
+          .testTag("btn_debug_unity_calculo")
+      ) {
+        Text("[Debug] Probar Cálculo Sereno en Unity (Reto 90 s)")
+      }
+
+      Spacer(modifier = Modifier.height(12.dp))
+
+      // "Anagramas" en Unity -- modo Reto (120 s): el largo de las palabras sube de a poco.
+      OutlinedButton(
+        onClick = {
+          com.example.bridge.UnityGameLauncher.launchAnagramas(
+            context = context,
+            userId = userSettings.id.toString(),
+            level = 1,
+            baseIntensity = 0,
+            timed = true,
+            ageBand = ageBand
+          )
+        },
+        shape = RoundedCornerShape(14.dp),
+        modifier = Modifier
+          .fillMaxWidth()
+          .testTag("btn_debug_unity_anagramas")
+      ) {
+        Text("[Debug] Probar Anagramas en Unity (Reto 120 s)")
+      }
+
+      Spacer(modifier = Modifier.height(12.dp))
+    }
+
     // Reset Data button
     OutlinedButton(
       onClick = { showResetDialog = true },

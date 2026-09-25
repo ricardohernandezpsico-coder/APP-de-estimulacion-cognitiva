@@ -15,7 +15,7 @@ import com.example.BuildConfig
     DomainMasteryEntity::class,
     ClaimedWeeklyChallengeEntity::class
   ],
-  version = 10,
+  version = 11,
   exportSchema = true
 )
 abstract class NeuroVidaDatabase : RoomDatabase() {
@@ -44,6 +44,12 @@ abstract class NeuroVidaDatabase : RoomDatabase() {
       // con el SQL de la migración, subir `version` arriba, y correr el build una vez
       // para que se genere `schemas/<version>.json` (ya versionado en git desde esta
       // auditoría). Ver NeuroVida/CLAUDE.md para el detalle del proceso.
+      // 10 -> 11 (24-sep): rating del DDA común por juego (ver docs/DDA-comun.md).
+      object : androidx.room.migration.Migration(10, 11) {
+        override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+          db.execSQL("ALTER TABLE game_progress ADD COLUMN ddaRating REAL NOT NULL DEFAULT -1")
+        }
+      }
     )
 
     fun getDatabase(context: Context): NeuroVidaDatabase {
