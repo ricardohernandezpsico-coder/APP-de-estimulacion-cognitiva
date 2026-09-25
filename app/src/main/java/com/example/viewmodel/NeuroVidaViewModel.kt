@@ -235,7 +235,42 @@ class NeuroVidaViewModel(application: Application) : AndroidViewModel(applicatio
   private var awaitingUnityReturn = false
 
   /** Partida que quedó en pausa dentro de Unity (sesión + id de lanzamiento), para retomarla en [launchGame]. */
-  private var pausedGame: Pair<ActiveGameSession, String>? = null
+  //
+  // Se guarda en disco (SharedPreferences), no solo en memoria: al salir al escritorio Android puede destruir la
+  // app (y este ViewModel) mientras el proceso de Unity, que es aparte, sigue vivo con la partida en pausa. Sin
+  // esto, al volver y tocar Play se generaba un id de lanzamiento nuevo y Unity empezaba una partida desde cero.
+  private val pausePrefs by lazy {
+    getApplication<Application>().getSharedPreferences("paused_game", android.content.Context.MODE_PRIVATE)
+  }
+
+  private var pausedGame: Pair<ActiveGameSession, String>?
+    get() {
+      val gameId = pausePrefs.getString("gameId", null) ?: return null
+      val launchId = pausePrefs.getString("launchId", null) ?: return null
+      val def = GameRegistry.getById(gameId) ?: return null
+      return ActiveGameSession(
+        gameDef = def,
+        level = pausePrefs.getInt("level", 1),
+        timed = pausePrefs.getBoolean("timed", false),
+        isDailyFlow = pausePrefs.getBoolean("daily", false),
+        intensity = pausePrefs.getInt("intensity", 0)
+      ) to launchId
+    }
+    set(value) {
+      val e = pausePrefs.edit()
+      if (value == null) {
+        e.clear()
+      } else {
+        val (session, launchId) = value
+        e.putString("gameId", session.gameDef.id)
+          .putString("launchId", launchId)
+          .putInt("level", session.level)
+          .putBoolean("timed", session.timed)
+          .putBoolean("daily", session.isDailyFlow)
+          .putInt("intensity", session.intensity)
+      }
+      e.apply()
+    }
 
   /** `UnityGameHost` acaba de traer al frente la pantalla de juego (Unity). */
   fun onUnityLaunched() {
