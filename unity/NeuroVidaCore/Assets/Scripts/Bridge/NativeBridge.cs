@@ -30,11 +30,38 @@ namespace NeuroVida.Bridge
         private static extern void _notificarFinJuegoIOS(string jsonDatos);
 #endif
 
-        /// <summary>Cierra la pantalla de Unity y devuelve al usuario a la app (Activity de Android).
-        /// En el Editor solo loguea.</summary>
+        /// <summary>
+        /// Vuelve a la app ("Continuar" o Atrás) SIN cerrar Unity: el lado Kotlin
+        /// (<c>NativeReceiver.returnToApp</c>) trae la pantalla de la app al frente con el resultado de la
+        /// partida (si terminó) y Unity queda en pausa detrás. Así la próxima partida no vuelve a arrancar el
+        /// motor desde cero (eran 5-8 s por juego): solo recarga la escena. La escena se recarga acá mismo para
+        /// quedar en reposo (limpia, sin el panel de resultado) mientras está oculta.
+        /// En el Editor solo loguea.
+        /// </summary>
         public static void CloseGameScreen()
         {
 #if UNITY_ANDROID && !UNITY_EDITOR
+            bool returned = false;
+            try
+            {
+                using (var jc = new AndroidJavaClass(AndroidReceiverClass))
+                {
+                    returned = jc.CallStatic<bool>("returnToApp");
+                }
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError("[NativeBridge] No se pudo volver a la app sin cerrar Unity: " + e.Message);
+            }
+
+            if (returned)
+            {
+                UnityEngine.SceneManagement.SceneManager.LoadScene(
+                    UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex);
+                return;
+            }
+
+            // Respaldo: el camino anterior (cerrar la Activity de Unity; la próxima partida arranca en frío).
             try
             {
                 var unityPlayer = new AndroidJavaClass("com.unity3d.player.UnityPlayer");

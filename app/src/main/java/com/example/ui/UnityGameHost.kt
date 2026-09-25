@@ -1,8 +1,5 @@
 package com.example.ui
 
-import android.app.Activity
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -12,6 +9,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -21,26 +19,28 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.example.bridge.UnityGameLauncher
 import com.example.model.AgeBand
 import com.example.viewmodel.ActiveGameSession
 
 /**
- * Puente entre el flujo de la app (menú, sesión diaria, resultados, todo en Compose) y los juegos, que ahora
- * se juegan en Unity: al montarse lanza la Activity de Unity con la sesión pedida y, cuando Unity se cierra,
- * avisa con [onReturned] si la partida terminó (`true`) o si el usuario salió a mitad / Unity se cayó (`false`).
+ * Puente entre el flujo de la app (menú, sesión diaria, resultados, todo en Compose) y los juegos, que se
+ * juegan en Unity. Al montarse trae al frente la pantalla de Unity con la sesión pedida. Unity queda VIVO entre
+ * partidas: al terminar ("Continuar") o salir (Atrás) no se cierra, sino que devuelve la app al frente con un
+ * Intent (ver `NativeReceiver.returnToApp` -> `MainActivity.onNewIntent` -> `NeuroVidaViewModel.onReturnedFromGame`),
+ * así la siguiente partida no vuelve a arrancar el motor (antes, 5-8 s de carga por juego).
  *
- * La señal llega como resultado de la Activity (`RESULT_OK` lo pone `NativeReceiver.onGameFinished` al terminar
- * la partida), no adivinando por tiempo al volver a primer plano. El resultado en sí viaja aparte, por
- * broadcast -> `UnityResultBus` -> ViewModel.
+ * [onHostResumed]: si la app vuelve a primer plano sin esa vuelta (Unity se cerró o se cayó), el ViewModel cierra
+ * la sesión. El observador de ciclo de vida recibe un ON_RESUME inmediato al registrarse (antes de lanzar): por
+ * eso el ViewModel solo lo tiene en cuenta después de [onLaunched].
  *
  * `launched` es `rememberSaveable` a propósito: si Android recrea MainActivity mientras Unity está al frente
  * (cambio de configuración: idioma, tamaño de fuente, modo oscuro del sistema...), la composición nueva no debe
  * volver a lanzar el juego. Este host sale de la composición entre una sesión y la siguiente (se muestra la
  * pantalla de resultado en medio), así que el valor no se arrastra de una partida a otra.
- *
- * Mientras Unity está al frente esta pantalla queda debajo, con un indicador de carga por si la transición
- * tarda un instante.
  */
 @Composable
 fun UnityGameHost(
@@ -48,18 +48,25 @@ fun UnityGameHost(
   userId: String,
   ageBand: AgeBand,
   soundEnabled: Boolean,
-  onReturned: (finished: Boolean) -> Unit
+  onLaunched: () -> Unit,
+  onHostResumed: () -> Unit
 ) {
   val context = LocalContext.current
   var launched by rememberSaveable { mutableStateOf(false) }
-  val launcher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-    onReturned(result.resultCode == Activity.RESULT_OK)
+
+  val lifecycleOwner = LocalLifecycleOwner.current
+  DisposableEffect(lifecycleOwner) {
+    val observer = LifecycleEventObserver { _, event ->
+      if (event == Lifecycle.Event.ON_RESUME) onHostResumed()
+    }
+    lifecycleOwner.lifecycle.addObserver(observer)
+    onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
   }
 
   LaunchedEffect(Unit) {
     if (launched) return@LaunchedEffect
     launched = true
-    launcher.launch(
+    context.startActivity(
       UnityGameLauncher.buildGameIntent(
         context = context,
         gameId = session.gameDef.id,
@@ -71,6 +78,7 @@ fun UnityGameHost(
         soundEnabled = soundEnabled
       )
     )
+    onLaunched()
   }
 
   Column(

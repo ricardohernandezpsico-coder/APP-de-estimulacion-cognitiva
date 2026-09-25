@@ -23,6 +23,10 @@ import com.unity3d.player.UnityPlayerGameActivity
 object UnityGameLauncher {
   const val EXTRA_CONFIG_JSON = "neurovida_game_config_json"
 
+  /** Id único de cada partida lanzada. Unity queda vivo entre partidas: con este id detecta que llegó una nueva
+   *  (Intent nuevo con REORDER_TO_FRONT) y la app sabe a qué partida pertenece el resultado que vuelve. */
+  const val EXTRA_LAUNCH_ID = "neurovida_launch_id"
+
   @JsonClass(generateAdapter = true)
   data class ConfigDetailsDto(
     val level: Int,
@@ -145,9 +149,10 @@ object UnityGameLauncher {
   ) = launch(context, userId, "anagramas", level, baseIntensity, timed, ageBand, soundEnabled)
 
   /**
-   * Intent para jugar cualquiera de los 9 juegos en Unity desde el menú principal / sesión diaria. Se lanza con
-   * `startActivityForResult` (ver `UnityGameHost`): Unity devuelve `RESULT_OK` si la partida terminó (el
-   * resultado viaja aparte, por broadcast) y `RESULT_CANCELED` si el usuario salió a mitad o Unity se cayó.
+   * Intent para jugar cualquiera de los 9 juegos en Unity desde el menú principal / sesión diaria. Trae al
+   * frente la Activity de Unity si ya está viva (FLAG_ACTIVITY_REORDER_TO_FRONT: sin volver a arrancar el motor)
+   * con un [EXTRA_LAUNCH_ID] nuevo. La vuelta a la app llega a `MainActivity.onNewIntent` (ver
+   * `NativeReceiver.returnToApp`).
    */
   fun buildGameIntent(
     context: Context,
@@ -199,6 +204,9 @@ object UnityGameLauncher {
     )
     val json = adapter.toJson(config)
 
-    return Intent(context, UnityPlayerGameActivity::class.java).putExtra(EXTRA_CONFIG_JSON, json)
+    return Intent(context, UnityPlayerGameActivity::class.java)
+      .addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
+      .putExtra(EXTRA_CONFIG_JSON, json)
+      .putExtra(EXTRA_LAUNCH_ID, java.util.UUID.randomUUID().toString())
   }
 }

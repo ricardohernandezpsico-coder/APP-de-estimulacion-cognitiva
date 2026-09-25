@@ -16,11 +16,9 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withTimeoutOrNull
 
 enum class AppTab(val title: String, val iconName: String) {
   HOY("Hoy", "Today"),
@@ -44,9 +42,6 @@ data class DomainStats(
   val totalPlayed: Int,
   val competenceLevel: Int // 1 to 5
 )
-
-/** Cuánto se espera el resultado de Unity (llega por broadcast) después de que su Activity se cerró con RESULT_OK. */
-private const val UNITY_RESULT_WAIT_MS = 10_000L
 
 class NeuroVidaViewModel(application: Application) : AndroidViewModel(application) {
   private val repository = NeuroVidaRepository(application)
@@ -222,23 +217,44 @@ class NeuroVidaViewModel(application: Application) : AndroidViewModel(applicatio
     }
   }
 
+  /** true entre que se lanza Unity y que vuelve la app (ver [onReturnedFromGame] / [onHostResumed]). */
+  private var awaitingUnityReturn = false
+
+  /** `UnityGameHost` acaba de traer al frente la pantalla de juego (Unity). */
+  fun onUnityLaunched() {
+    awaitingUnityReturn = true
+  }
+
   /**
-   * Unity se cerró. [finished] = la partida terminó (`RESULT_OK`, ver `UnityGameHost`): el resultado viene en
-   * camino por broadcast y puede llegar un poco después que esta llamada, así que se espera hasta
-   * [UNITY_RESULT_WAIT_MS] antes de cerrar la sesión (si llega más tarde igual se guarda en [onUnityResult],
-   * solo que sin pantalla de resultado). `false` = el usuario salió a mitad o Unity se cayó: no hay nada que
-   * esperar, se cierra la sesión de inmediato.
+   * Unity devolvió la app al frente ("Continuar" o Atrás) -- llega por `MainActivity.onNewIntent`, antes de
+   * `onResume`. Si la partida terminó, [resultJson] trae su resultado y se muestra al instante (sin esperar al
+   * broadcast de respaldo; [com.example.bridge.UnityResultInbox] evita procesarlo dos veces). Sin resultado =
+   * salió a mitad de partida: se cierra la sesión.
    */
-  fun onUnityGameClosed(finished: Boolean) {
-    val session = _activeGame.value ?: return // el resultado ya llegó y cerró la sesión
-    if (!finished) {
-      if (_lastResult.value == null) _activeGame.value = null
-      return
+  fun onReturnedFromGame(launchId: String?, resultJson: String?) {
+    awaitingUnityReturn = false
+    if (resultJson != null) {
+      if (com.example.bridge.UnityResultInbox.claim(launchId)) {
+        val result = com.example.bridge.NativeReceiver.parse(resultJson)
+        if (result != null) {
+          onUnityResult(result)
+          return
+        }
+      } else {
+        return // ya llegó por el broadcast: onUnityResult lo está mostrando
+      }
     }
-    viewModelScope.launch {
-      val arrived = withTimeoutOrNull(UNITY_RESULT_WAIT_MS) { _lastResult.first { it != null } }
-      if (arrived == null && _activeGame.value === session) _activeGame.value = null
-    }
+    if (_lastResult.value == null) _activeGame.value = null
+  }
+
+  /**
+   * La app volvió a primer plano. Si se esperaba la vuelta de Unity y no llegó (Unity se cerró o se cayó en
+   * vez de devolver la app), se cierra la sesión para no dejar la pantalla de carga colgada.
+   */
+  fun onHostResumed() {
+    if (!awaitingUnityReturn) return
+    awaitingUnityReturn = false
+    if (_lastResult.value == null) _activeGame.value = null
   }
 
   fun finishActiveGame(score: Int, correct: Int, total: Int) {

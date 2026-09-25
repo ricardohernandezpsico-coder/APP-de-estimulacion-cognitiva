@@ -8,6 +8,6 @@ import android.content.Intent
 class UnityResultReceiver : BroadcastReceiver() {
   override fun onReceive(context: Context, intent: Intent) {
     val json = intent.getStringExtra(NativeReceiver.EXTRA_JSON) ?: return
-    NativeReceiver.handleFinished(json)
+    NativeReceiver.handleFinished(json, intent.getStringExtra(UnityGameLauncher.EXTRA_LAUNCH_ID))
   }
 }

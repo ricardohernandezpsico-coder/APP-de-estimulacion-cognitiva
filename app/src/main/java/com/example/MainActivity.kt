@@ -1,6 +1,8 @@
 package com.example
 
+import android.content.Intent
 import android.os.Bundle
+import androidx.activity.addCallback
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -35,6 +37,8 @@ import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
+import com.example.bridge.NativeReceiver
+import com.example.bridge.UnityGameLauncher
 import com.example.games.*
 import com.example.ui.LocalAgeBand
 import com.example.ui.i18n.LocalAppLanguage
@@ -55,6 +59,11 @@ class MainActivity : ComponentActivity() {
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
+    if (savedInstanceState == null) handleGameReturn(intent)
+    // Atrás en la pantalla raíz: la app pasa a segundo plano en vez de cerrarse. Unity queda vivo DEBAJO de esta
+    // Activity entre partidas (ver UnityGameHost); cerrarla lo dejaría a la vista. Los BackHandler de Compose
+    // (diálogos, Ajustes) se registran después y tienen prioridad.
+    onBackPressedDispatcher.addCallback(this) { moveTaskToBack(true) }
     enableEdgeToEdge(
       statusBarStyle = androidx.activity.SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
       navigationBarStyle = androidx.activity.SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
@@ -82,6 +91,22 @@ class MainActivity : ComponentActivity() {
         }
       }
     }
+  }
+
+  /** Unity trae la app al frente al terminar o salir de una partida (ver `NativeReceiver.returnToApp`). */
+  override fun onNewIntent(intent: Intent) {
+    super.onNewIntent(intent)
+    setIntent(intent)
+    handleGameReturn(intent)
+  }
+
+  private fun handleGameReturn(intent: Intent?) {
+    if (intent?.getBooleanExtra(NativeReceiver.EXTRA_RETURN_FROM_GAME, false) != true) return
+    intent.removeExtra(NativeReceiver.EXTRA_RETURN_FROM_GAME)
+    viewModel.onReturnedFromGame(
+      launchId = intent.getStringExtra(UnityGameLauncher.EXTRA_LAUNCH_ID),
+      resultJson = intent.getStringExtra(NativeReceiver.EXTRA_JSON)
+    )
   }
 }
 
@@ -151,7 +176,8 @@ fun NeuroVidaApp(viewModel: NeuroVidaViewModel) {
               userId = userSettings.id.toString(),
               ageBand = userSettings.ageBand ?: com.example.model.AgeBand.ADULT,
               soundEnabled = userSettings.soundEnabled,
-              onReturned = { finished -> viewModel.onUnityGameClosed(finished) }
+              onLaunched = { viewModel.onUnityLaunched() },
+              onHostResumed = { viewModel.onHostResumed() }
             )
           }
         }

@@ -52,6 +52,17 @@ namespace NeuroVida.Bridge
             Screen.orientation = ScreenOrientation.Portrait;
         }
 
+        /// <summary>Unity queda vivo entre partidas y la escena se recarga "en reposo" (ver NativeBridge.CloseGameScreen):
+        /// la cámara pinta el azul noche de la app en vez del cielo por defecto de Unity, así el instante entre que
+        /// Unity vuelve al frente y arranca la partida nueva no muestra un fondo gris azulado ajeno a la app.</summary>
+        private void Awake()
+        {
+            var cam = Camera.main;
+            if (cam == null) return;
+            cam.clearFlags = CameraClearFlags.SolidColor;
+            cam.backgroundColor = NeuroVida.Games.Shared.NeuroStyle.NightBottom;
+        }
+
         /// <summary>Botón Atrás de Android (llega como Escape): cierra la pantalla de Unity y vuelve a la app.
         /// A mitad de partida no se guarda nada (el resultado solo se envía al terminar).</summary>
         private void Update()

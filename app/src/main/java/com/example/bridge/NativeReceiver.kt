@@ -1,7 +1,8 @@
 package com.example.bridge
 
-import android.app.Activity
+import android.content.Intent
 import android.util.Log
+import com.example.MainActivity
 import com.example.NeuroVidaApplication
 import com.example.model.GamePlayResult
 import com.squareup.moshi.JsonClass
@@ -106,43 +107,62 @@ object NativeReceiver {
   const val ACTION_GAME_FINISHED = "com.example.action.UNITY_GAME_FINISHED"
   const val EXTRA_JSON = "json"
 
+  /** Extra del Intent de vuelta a la app: la pantalla de juego (Unity) se ocultó y la app vuelve al frente. */
+  const val EXTRA_RETURN_FROM_GAME = "neurovida_return_from_game"
+
+  /** Resultado de la partida en curso, guardado en el proceso de Unity hasta que el usuario vuelve a la app. */
+  @Volatile private var pendingResultJson: String? = null
+  @Volatile private var pendingLaunchId: String? = null
+
+  /** Id del lanzamiento que está jugando Unity (lo pone [UnityGameLauncher] en el Intent). Proceso `:unity`. */
+  private fun currentLaunchId(): String? =
+    UnityPlayer.currentActivity?.intent?.getStringExtra(UnityGameLauncher.EXTRA_LAUNCH_ID)
+
   /**
-   * Punto de entrada desde Unity. La Activity de Unity corre en su propio proceso (`:unity`, ver el manifest:
-   * al cerrarse Unity mata su proceso y, si compartiera el de la app, se llevaría la app puesta), así que el
-   * resultado viaja al proceso principal por un broadcast explícito ([UnityResultReceiver] -> [handleFinished]).
+   * Punto de entrada desde Unity al terminar la partida (proceso `:unity`). El resultado se guarda para
+   * entregarlo junto con la vuelta a la app ([returnToApp]) y además viaja por un broadcast explícito al proceso
+   * principal ([UnityResultReceiver] -> [handleFinished]), para no perderlo si el usuario nunca vuelve (Inicio,
+   * Unity cerrado en segundo plano). [UnityResultInbox] evita procesarlo dos veces.
    */
   @JvmStatic
   fun onGameFinished(json: String) {
-    // Marca la Activity de Unity como "partida terminada": al cerrarse, MainActivity recibe RESULT_OK (ver
-    // UnityGameHost) y espera este resultado. Si el usuario sale a mitad (Atrás) o Unity se cae, nunca pasa por
-    // acá y el resultado queda en RESULT_CANCELED. Activity.setResult es synchronized: se puede llamar desde
-    // el hilo de Unity.
-    UnityPlayer.currentActivity?.setResult(Activity.RESULT_OK)
+    val launchId = currentLaunchId()
+    pendingResultJson = json
+    pendingLaunchId = launchId
     val app = NeuroVidaApplication.instance
     app.sendBroadcast(
-      android.content.Intent(ACTION_GAME_FINISHED).setPackage(app.packageName).putExtra(EXTRA_JSON, json)
+      Intent(ACTION_GAME_FINISHED).setPackage(app.packageName)
+        .putExtra(EXTRA_JSON, json)
+        .putExtra(UnityGameLauncher.EXTRA_LAUNCH_ID, launchId)
     )
   }
 
-  /** Corre en el proceso principal: parsea la telemetría y la entrega a la UI o la guarda. */
-  fun handleFinished(json: String) {
-    val gameId = try {
-      peekAdapter.fromJson(json)?.game_id
-    } catch (e: Exception) {
-      Log.e(TAG, "JSON de telemetría inválido (sin game_id legible): $json", e)
-      null
-    } ?: return
+  /**
+   * "Continuar" o Atrás en Unity (proceso `:unity`): trae la app al frente SIN cerrar Unity, que queda en pausa
+   * detrás. Así la próxima partida no arranca el motor desde cero (eran 5-8 s por juego). El Intent lleva el
+   * resultado si la partida terminó, para que la app lo muestre al instante sin esperar al broadcast.
+   * Devuelve false si no pudo (Unity usa entonces el camino viejo: cerrar su Activity).
+   */
+  @JvmStatic
+  fun returnToApp(): Boolean {
+    val activity = UnityPlayer.currentActivity ?: return false
+    val launchId = currentLaunchId()
+    val intent = Intent(activity, MainActivity::class.java)
+      .addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
+      .putExtra(EXTRA_RETURN_FROM_GAME, true)
+      .putExtra(UnityGameLauncher.EXTRA_LAUNCH_ID, launchId)
+    val json = pendingResultJson
+    if (json != null && pendingLaunchId == launchId) intent.putExtra(EXTRA_JSON, json)
+    pendingResultJson = null
+    pendingLaunchId = null
+    activity.runOnUiThread { activity.startActivity(intent) }
+    return true
+  }
 
-    val result = when (gameId) {
-      "secuencia" -> parseSequenceResult(json)
-      "parejas" -> parseCardsResult(json)
-      // Comparación, Cambio de Chip, Ruta del Tesoro, Series, Cálculo y Anagramas reusan el mismo esquema de telemetría por ensayos que Stroop.
-      "stroop", "comparacion", "cambiochip", "rutatesoro", "series", "calculo", "anagramas" -> parseStroopResult(json)
-      else -> {
-        Log.e(TAG, "game_id \"$gameId\" no tiene un parser de telemetría registrado todavía.")
-        null
-      }
-    } ?: return
+  /** Corre en el proceso principal (broadcast): entrega el resultado a la UI o lo guarda, una sola vez. */
+  fun handleFinished(json: String, launchId: String?) {
+    if (!UnityResultInbox.claim(launchId)) return // ya llegó con la vuelta a la app
+    val result = parse(json) ?: return
 
     // Si la UI está escuchando (ViewModel vivo), ella guarda el resultado y muestra la pantalla de
     // resultado de la app; si no, se guarda directamente para no perder la partida.
@@ -152,6 +172,27 @@ object NativeReceiver {
       scope.launch {
         Log.i(TAG, "Persistiendo resultado de Unity: $result")
         NeuroVidaApplication.instance.repository.recordGameResult(result)
+      }
+    }
+  }
+
+  /** Telemetría de Unity (JSON) -> [GamePlayResult]; null si no se puede leer. */
+  fun parse(json: String): GamePlayResult? {
+    val gameId = try {
+      peekAdapter.fromJson(json)?.game_id
+    } catch (e: Exception) {
+      Log.e(TAG, "JSON de telemetría inválido (sin game_id legible): $json", e)
+      null
+    } ?: return null
+
+    return when (gameId) {
+      "secuencia" -> parseSequenceResult(json)
+      "parejas" -> parseCardsResult(json)
+      // Comparación, Cambio de Chip, Ruta del Tesoro, Series, Cálculo y Anagramas reusan el mismo esquema de telemetría por ensayos que Stroop.
+      "stroop", "comparacion", "cambiochip", "rutatesoro", "series", "calculo", "anagramas" -> parseStroopResult(json)
+      else -> {
+        Log.e(TAG, "game_id \"$gameId\" no tiene un parser de telemetría registrado todavía.")
+        null
       }
     }
   }
