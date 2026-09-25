@@ -1,10 +1,12 @@
 package com.example.bridge
 
+import android.app.Activity
 import android.util.Log
 import com.example.NeuroVidaApplication
 import com.example.model.GamePlayResult
 import com.squareup.moshi.JsonClass
 import com.squareup.moshi.Moshi
+import com.unity3d.player.UnityPlayer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -111,6 +113,11 @@ object NativeReceiver {
    */
   @JvmStatic
   fun onGameFinished(json: String) {
+    // Marca la Activity de Unity como "partida terminada": al cerrarse, MainActivity recibe RESULT_OK (ver
+    // UnityGameHost) y espera este resultado. Si el usuario sale a mitad (Atrás) o Unity se cae, nunca pasa por
+    // acá y el resultado queda en RESULT_CANCELED. Activity.setResult es synchronized: se puede llamar desde
+    // el hilo de Unity.
+    UnityPlayer.currentActivity?.setResult(Activity.RESULT_OK)
     val app = NeuroVidaApplication.instance
     app.sendBroadcast(
       android.content.Intent(ACTION_GAME_FINISHED).setPackage(app.packageName).putExtra(EXTRA_JSON, json)

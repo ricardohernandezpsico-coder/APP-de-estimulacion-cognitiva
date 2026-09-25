@@ -16,10 +16,17 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.MyApplication"
         tools:replace="android:allowBackup">
+        <!-- Toda la app es solo vertical (ver screenOrientation abajo). Desde targetSdk 36, Android 16 ignora la
+             orientación fija en pantallas grandes (tablets, plegables abiertos); esta propiedad pide mantenerla
+             mientras las pantallas y los juegos no tengan diseño horizontal. -->
+        <property
+            android:name="android.window.PROPERTY_COMPAT_ALLOW_RESTRICTED_RESIZABILITY"
+            android:value="true" />
         <activity
             android:name=".MainActivity"
             android:exported="true"
             android:label="@string/app_name"
+            android:screenOrientation="portrait"
             android:theme="@style/Theme.MyApplication">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -34,13 +41,15 @@
              sea la puerta de entrada de la app; se lanza explícitamente por Intent desde
              el código nativo cuando corresponda. allowBackup se pisa arriba porque
              unityLibrary declara "false" y el merger de manifests no resuelve solo un
-             valor distinto al del host. -->
+             valor distinto al del host. screenOrientation se fija en vertical: los 9 juegos arman su interfaz para
+             1080x1920 vertical y al girar se desarmaban (el export de Unity traía autorrotación). -->
         <activity
             android:name="com.unity3d.player.appui.AppUIGameActivity"
             android:exported="false"
             android:process=":unity"
+            android:screenOrientation="portrait"
             tools:node="merge"
-            tools:replace="android:exported">
+            tools:replace="android:exported,android:screenOrientation">
             <intent-filter tools:node="removeAll" />
         </activity>
         <receiver

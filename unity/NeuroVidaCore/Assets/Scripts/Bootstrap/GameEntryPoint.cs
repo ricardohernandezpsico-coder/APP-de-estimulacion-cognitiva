@@ -39,6 +39,19 @@ namespace NeuroVida.Bridge
         [SerializeField] private CalculoGameController calculoGameController;
         [SerializeField] private AnagramGameController anagramGameController;
 
+        /// <summary>Los 9 juegos arman su interfaz una sola vez para 1080x1920 vertical: al girar el teléfono se
+        /// desarmaban. Se fija la orientación antes de cargar la escena, además de Player Settings (Portrait) y del
+        /// manifest de la app, para que no dependa de que el export esté al día.</summary>
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+        private static void LockPortrait()
+        {
+            Screen.autorotateToPortrait = true;
+            Screen.autorotateToPortraitUpsideDown = false;
+            Screen.autorotateToLandscapeLeft = false;
+            Screen.autorotateToLandscapeRight = false;
+            Screen.orientation = ScreenOrientation.Portrait;
+        }
+
         /// <summary>Botón Atrás de Android (llega como Escape): cierra la pantalla de Unity y vuelve a la app.
         /// A mitad de partida no se guarda nada (el resultado solo se envía al terminar).</summary>
         private void Update()

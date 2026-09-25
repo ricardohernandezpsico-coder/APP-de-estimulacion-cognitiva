@@ -144,8 +144,12 @@ object UnityGameLauncher {
     soundEnabled: Boolean = true
   ) = launch(context, userId, "anagramas", level, baseIntensity, timed, ageBand, soundEnabled)
 
-  /** Lanza cualquiera de los 9 juegos en Unity para una sesión del menú principal / sesión diaria. */
-  fun launchGame(
+  /**
+   * Intent para jugar cualquiera de los 9 juegos en Unity desde el menú principal / sesión diaria. Se lanza con
+   * `startActivityForResult` (ver `UnityGameHost`): Unity devuelve `RESULT_OK` si la partida terminó (el
+   * resultado viaja aparte, por broadcast) y `RESULT_CANCELED` si el usuario salió a mitad o Unity se cayó.
+   */
+  fun buildGameIntent(
     context: Context,
     gameId: String,
     userId: String,
@@ -154,7 +158,7 @@ object UnityGameLauncher {
     timed: Boolean,
     ageBand: AgeBand,
     soundEnabled: Boolean = true
-  ) = launch(context, userId, gameId, level, baseIntensity, timed, ageBand, soundEnabled)
+  ): Intent = buildIntent(context, userId, gameId, level, baseIntensity, timed, ageBand, soundEnabled)
 
   private fun launch(
     context: Context,
@@ -166,6 +170,19 @@ object UnityGameLauncher {
     ageBand: AgeBand,
     soundEnabled: Boolean
   ) {
+    context.startActivity(buildIntent(context, userId, gameId, level, baseIntensity, timed, ageBand, soundEnabled))
+  }
+
+  private fun buildIntent(
+    context: Context,
+    userId: String,
+    gameId: String,
+    level: Int,
+    baseIntensity: Int,
+    timed: Boolean,
+    ageBand: AgeBand,
+    soundEnabled: Boolean
+  ): Intent {
     val savedRating = com.example.NeuroVidaApplication.instance.repository.gameDdaRating.value[gameId] ?: -1f
     val config = InitConfigDto(
       user_id = userId,
@@ -182,8 +199,6 @@ object UnityGameLauncher {
     )
     val json = adapter.toJson(config)
 
-    val intent = Intent(context, AppUIGameActivity::class.java)
-    intent.putExtra(EXTRA_CONFIG_JSON, json)
-    context.startActivity(intent)
+    return Intent(context, AppUIGameActivity::class.java).putExtra(EXTRA_CONFIG_JSON, json)
   }
 }

@@ -151,7 +151,7 @@ fun NeuroVidaApp(viewModel: NeuroVidaViewModel) {
               userId = userSettings.id.toString(),
               ageBand = userSettings.ageBand ?: com.example.model.AgeBand.ADULT,
               soundEnabled = userSettings.soundEnabled,
-              onReturned = { viewModel.onUnityGameClosed() }
+              onReturned = { finished -> viewModel.onUnityGameClosed(finished) }
             )
           }
         }

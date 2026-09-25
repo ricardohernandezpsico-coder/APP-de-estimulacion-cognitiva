@@ -16,9 +16,11 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 enum class AppTab(val title: String, val iconName: String) {
   HOY("Hoy", "Today"),
@@ -42,6 +44,9 @@ data class DomainStats(
   val totalPlayed: Int,
   val competenceLevel: Int // 1 to 5
 )
+
+/** Cuánto se espera el resultado de Unity (llega por broadcast) después de que su Activity se cerró con RESULT_OK. */
+private const val UNITY_RESULT_WAIT_MS = 10_000L
 
 class NeuroVidaViewModel(application: Application) : AndroidViewModel(application) {
   private val repository = NeuroVidaRepository(application)
@@ -217,13 +222,22 @@ class NeuroVidaViewModel(application: Application) : AndroidViewModel(applicatio
     }
   }
 
-  /** El usuario volvió de Unity: si no llegó ningún resultado (salió sin terminar), se cierra la sesión. */
-  fun onUnityGameClosed() {
-    // Margen para que un resultado en camino (llega por broadcast desde el proceso de Unity) todavía se
-    // asocie a la sesión activa antes de cerrarla.
-    viewModelScope.launch {
-      kotlinx.coroutines.delay(1500)
+  /**
+   * Unity se cerró. [finished] = la partida terminó (`RESULT_OK`, ver `UnityGameHost`): el resultado viene en
+   * camino por broadcast y puede llegar un poco después que esta llamada, así que se espera hasta
+   * [UNITY_RESULT_WAIT_MS] antes de cerrar la sesión (si llega más tarde igual se guarda en [onUnityResult],
+   * solo que sin pantalla de resultado). `false` = el usuario salió a mitad o Unity se cayó: no hay nada que
+   * esperar, se cierra la sesión de inmediato.
+   */
+  fun onUnityGameClosed(finished: Boolean) {
+    val session = _activeGame.value ?: return // el resultado ya llegó y cerró la sesión
+    if (!finished) {
       if (_lastResult.value == null) _activeGame.value = null
+      return
+    }
+    viewModelScope.launch {
+      val arrived = withTimeoutOrNull(UNITY_RESULT_WAIT_MS) { _lastResult.first { it != null } }
+      if (arrived == null && _activeGame.value === session) _activeGame.value = null
     }
   }
 
