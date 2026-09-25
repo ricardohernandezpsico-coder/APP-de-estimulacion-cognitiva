@@ -1,19 +1,23 @@
 using System.Collections.Generic;
 using UnityEngine;
+using static NeuroVida.Games.Shared.ClayRaster;
 
 namespace NeuroVida.Games.RutaTesoro
 {
     /// <summary>
-    /// Tesoros de playa procedurales (estrella de mar, concha, perla) en dos variantes de color
-    /// cada uno. Reemplazan a las gemas doradas, que daban un aire de tragamonedas: estos objetos
-    /// son suaves y familiares, con contorno, degradé y un brillo discreto. Sin assets:
-    /// distancias con signo + antialiasing. Colores horneados (Image.color en blanco).
+    /// Tesoros de playa (estrella de mar, concha, perla) en dos variantes de color cada uno, en arcilla como el
+    /// resto de la app: relleno plano de la paleta, borde tinta grueso, sombra dura hacia abajo y brillo nítido
+    /// (antes: degradé con contorno del mismo color, estilo sticker). Siguen siendo objetos de playa, no gemas
+    /// doradas (parecían tragamonedas). Sin assets; colores horneados (<c>Image.color</c> en blanco).
     /// </summary>
     public static class TreasureSprites
     {
         public const int KindCount = 3;
         private const int SizePx = 192;
+        private const float Zoom = 1.12f;
         private const float Aa = 0.022f;
+        private const float Line = 0.075f;
+        private const float Drop = 0.09f;
         private static readonly Dictionary<int, Sprite> Cache = new Dictionary<int, Sprite>();
 
         /// <summary>Un tesoro distinto según el índice (tipo = i % 3, variante = (i / 3) % 2).</summary>
@@ -27,163 +31,124 @@ namespace NeuroVida.Games.RutaTesoro
         {
             int key = kind * 10 + variant;
             if (Cache.TryGetValue(key, out var cached) && cached != null) return cached;
-
-            var px = new Color32[SizePx * SizePx];
-            for (int y = 0; y < SizePx; y++)
-            {
-                for (int x = 0; x < SizePx; x++)
-                {
-                    float nx = (x + 0.5f) / SizePx * 2f - 1f;
-                    float ny = (y + 0.5f) / SizePx * 2f - 1f;
-                    px[y * SizePx + x] = Shade(kind, variant, nx, ny);
-                }
-            }
-            var tex = new Texture2D(SizePx, SizePx, TextureFormat.RGBA32, false)
-            {
-                wrapMode = TextureWrapMode.Clamp,
-                filterMode = FilterMode.Bilinear
-            };
-            tex.SetPixels32(px);
-            tex.Apply();
-            var sprite = Sprite.Create(tex, new Rect(0, 0, SizePx, SizePx), new Vector2(0.5f, 0.5f), SizePx);
+            var sprite = ToSprite(Render(kind, variant, SizePx), SizePx, SizePx);
             Cache[key] = sprite;
             return sprite;
         }
 
-        private static float Edge(float sdf) => Mathf.Clamp01(0.5f - sdf / Aa);
-        private static Color Hex(int rgb) => new Color(((rgb >> 16) & 0xFF) / 255f, ((rgb >> 8) & 0xFF) / 255f, (rgb & 0xFF) / 255f, 1f);
-
-        private struct Acc
+        /// <summary>Píxeles del tesoro (fila 0 = abajo). Separado de <see cref="Get"/> para previsualizar fuera de Unity.</summary>
+        public static Color32[] Render(int kind, int variant, int size)
         {
-            public float r, g, b, a;
-            public void Over(Color c, float coverage)
+            var px = new Color32[size * size];
+            for (int py = 0; py < size; py++)
             {
-                float sa = c.a * coverage;
-                if (sa <= 0f) return;
-                r = c.r * sa + r * (1f - sa);
-                g = c.g * sa + g * (1f - sa);
-                b = c.b * sa + b * (1f - sa);
-                a = sa + a * (1f - sa);
+                for (int pxi = 0; pxi < size; pxi++)
+                {
+                    float x = ((pxi + 0.5f) / size * 2f - 1f) * Zoom;
+                    float y = ((py + 0.5f) / size * 2f - 1f) * Zoom;
+                    var p = new Px();
+                    p.Over(Ink, Cover(Body(kind, x, y + Drop) - Line, Aa));      // sombra dura
+                    p.Over(Ink, Cover(Body(kind, x, y) - Line, Aa));             // borde tinta
+                    switch (kind)
+                    {
+                        case 0: Starfish(ref p, variant, x, y); break;
+                        case 1: Shell(ref p, variant, x, y); break;
+                        default: Pearl(ref p, variant, x, y); break;
+                    }
+                    px[py * size + pxi] = p.ToColor32();
+                }
             }
-            public Color32 ToColor32()
-            {
-                float k = a > 0.0001f ? 1f / a : 0f;
-                return new Color32(
-                    (byte)(Mathf.Clamp01(r * k) * 255f), (byte)(Mathf.Clamp01(g * k) * 255f),
-                    (byte)(Mathf.Clamp01(b * k) * 255f), (byte)(Mathf.Clamp01(a) * 255f));
-            }
+            return px;
         }
 
-        private static Color32 Shade(int kind, int variant, float x, float y)
+        /// <summary>Silueta de cada tesoro (para el borde y la sombra).</summary>
+        private static float Body(int kind, float x, float y)
         {
-            var acc = new Acc();
             switch (kind)
             {
-                case 0: Starfish(ref acc, variant, x, y); break;
-                case 1: Shell(ref acc, variant, x, y); break;
-                default: Pearl(ref acc, variant, x, y); break;
+                case 0: return StarfishSdf(x, y);
+                case 1: return ShellSdf(x, y);
+                default: return Circle(x, y, 0f, 0.02f, 0.60f);
             }
-            return acc.ToColor32();
         }
 
-        // Capa con contorno oscuro + relleno con degradé vertical.
-        private static void Layer(ref Acc acc, float sdf, Color outline, Color top, Color bottom, float yTop, float yBottom, float y)
+        private static void Gloss(ref Px p, float x, float y, float cx, float cy, float rx, float ry, float body)
         {
-            acc.Over(outline, Edge(sdf - 0.05f));
-            float t = Mathf.Clamp01((yTop - y) / Mathf.Max(0.01f, yTop - yBottom));
-            acc.Over(Color.Lerp(top, bottom, t), Edge(sdf));
+            p.Over(new Color(1f, 1f, 1f, 0.5f), Cover(Ellipse(x, y, cx, cy, rx, ry), Aa) * Cover(body + 0.03f, Aa));
         }
 
         // ---------------------------------------------------------------- estrella de mar
 
-        private static void Starfish(ref Acc acc, int variant, float x, float y)
+        private static float StarfishSdf(float x, float y) => Star(x, y, 0f, -0.02f, 5, 0.84f, 3.4f, 0.14f);
+
+        private static void Starfish(ref Px p, int variant, float x, float y)
         {
-            Color top = variant == 0 ? Hex(0xFDBA74) : Hex(0xFDA4AF);
-            Color bottom = variant == 0 ? Hex(0xEA580C) : Hex(0xE11D48);
-            Color outline = variant == 0 ? Hex(0x9A3412) : Hex(0x9F1239);
-            Color dot = variant == 0 ? Hex(0xFFEDD5) : Hex(0xFFE4E6);
+            Color main = variant == 0 ? Coral : Orange;
+            float body = StarfishSdf(x, y);
+            p.Over(main, Cover(body, Aa));
+            p.Over(Tint(main, 0.22f), Cover(Star(x, y, 0f, -0.02f, 5, 0.40f, 3.4f, 0.08f), Aa));
 
-            float len = Mathf.Sqrt(x * x + y * y);
-            float ang = Mathf.Atan2(y, x) - Mathf.PI / 2f;
-            float wave = 0.5f + 0.5f * Mathf.Cos(5f * ang);            // 1 en las puntas, 0 en los valles
-            float radius = 0.34f + 0.46f * Mathf.Pow(wave, 1.35f);
-            float sdf = (len - radius) * 0.62f;                         // Lipschitz aproximado
-            Layer(ref acc, sdf, outline, top, bottom, 0.8f, -0.8f, y);
-
-            // Puntitos claros a lo largo de cada brazo.
+            // Puntitos crema a lo largo de cada brazo.
             for (int arm = 0; arm < 5; arm++)
             {
                 float a = Mathf.PI / 2f + arm * Mathf.PI * 2f / 5f;
                 for (int d = 0; d < 3; d++)
                 {
-                    float r = 0.22f + d * 0.16f;
-                    float px = Mathf.Cos(a) * r, py = Mathf.Sin(a) * r;
-                    float dd = Mathf.Sqrt((x - px) * (x - px) + (y - py) * (y - py)) - (0.045f - d * 0.007f);
-                    acc.Over(new Color(dot.r, dot.g, dot.b, 0.9f), Edge(dd) * Edge(sdf + 0.03f));
+                    float r = 0.24f + d * 0.16f;
+                    float dot = Circle(x, y, Mathf.Cos(a) * r, Mathf.Sin(a) * r - 0.02f, 0.05f - d * 0.009f);
+                    p.Over(Cream, Cover(dot, Aa) * Cover(body + 0.04f, Aa));
                 }
             }
-            Gloss(ref acc, x, y, -0.18f, 0.32f, 0.30f, 0.14f, Edge(sdf + 0.02f));
+            Gloss(ref p, x, y, -0.16f, 0.30f, 0.12f, 0.07f, body);
         }
 
         // ---------------------------------------------------------------- concha (vieira)
 
-        private static void Shell(ref Acc acc, int variant, float x, float y)
+        private const float ShellCy = -0.40f;
+
+        private static float ShellFan(float x, float y)
         {
-            Color top = variant == 0 ? Hex(0xFBCFE8) : Hex(0xDDD6FE);
-            Color bottom = variant == 0 ? Hex(0xF472B6) : Hex(0xA78BFA);
-            Color outline = variant == 0 ? Hex(0x9D174D) : Hex(0x5B21B6);
-            Color ridge = variant == 0 ? Hex(0xBE185D) : Hex(0x6D28D9);
-
-            const float cy = -0.42f;
-            float dx = x, dy = y - cy;
+            float dx = x, dy = y - ShellCy;
             float len = Mathf.Sqrt(dx * dx + dy * dy);
-            float ang = Mathf.Atan2(dy, dx);                            // 0..pi en la mitad superior
-            float scallop = 1.0f + 0.045f * Mathf.Cos(ang * 11f);
-            float fan = (len - 0.90f * scallop) * 0.85f;                // abanico
-            float cut = (cy - 0.06f - y) * 0.85f;                        // recorta el borde inferior
-            float body = Mathf.Max(fan, cut);
-            // Base pequeña (bisagra).
-            float bx = Mathf.Abs(x) - 0.20f, by = Mathf.Abs(y - (cy - 0.03f)) - 0.09f;
-            float hinge = Mathf.Sqrt(Mathf.Max(bx, 0f) * Mathf.Max(bx, 0f) + Mathf.Max(by, 0f) * Mathf.Max(by, 0f)) + Mathf.Min(Mathf.Max(bx, by), 0f) - 0.05f;
-            float sdf = Mathf.Min(body, hinge);
-            Layer(ref acc, sdf, outline, top, bottom, 0.6f, -0.5f, y);
+            float ang = Mathf.Atan2(dy, dx);
+            float scallop = 1.0f + 0.04f * Mathf.Cos(ang * 11f);
+            float fan = (len - 0.86f * scallop) * 0.85f;
+            float cut = (ShellCy - 0.06f - y) * 0.85f;
+            return Mathf.Max(fan, cut);
+        }
 
-            // Costillas: líneas que salen de la bisagra.
-            float ribs = Mathf.Abs(Mathf.Cos(ang * 5.5f));
-            float ribMask = Mathf.SmoothStep(0.84f, 0.98f, ribs) * Edge(body + 0.09f) * Mathf.Clamp01((len - 0.16f) * 6f);
-            acc.Over(new Color(ridge.r, ridge.g, ridge.b, 0.55f), ribMask);
-            Gloss(ref acc, x, y, -0.22f, 0.36f, 0.30f, 0.13f, Edge(body + 0.05f));
+        private static float ShellSdf(float x, float y) =>
+            Mathf.Min(ShellFan(x, y), RoundBox(x, y, 0f, ShellCy - 0.04f, 0.22f, 0.12f, 0.06f));
+
+        private static void Shell(ref Px p, int variant, float x, float y)
+        {
+            Color main = variant == 0 ? Pink : Grape;
+            float fan = ShellFan(x, y);
+            float hinge = RoundBox(x, y, 0f, ShellCy - 0.04f, 0.22f, 0.12f, 0.06f);
+            p.Over(Shade(main, 0.82f), Cover(hinge, Aa));
+            p.Over(Ink, Cover(Mathf.Max(fan - Line * 0.8f, hinge), Aa));   // línea entre bisagra y abanico
+            p.Over(main, Cover(fan, Aa));
+
+            // Costillas en tinta que salen de la bisagra.
+            float dx = x, dy = y - ShellCy;
+            float ang = Mathf.Atan2(dy, dx);
+            float len = Mathf.Sqrt(dx * dx + dy * dy);
+            float rib = Mathf.Abs(Mathf.Repeat(ang * 5.5f / Mathf.PI + 0.5f, 1f) - 0.5f) * Mathf.PI / 5.5f * len - 0.018f;
+            p.Over(WithAlpha(Ink, 0.55f), Cover(rib, Aa) * Cover(fan + 0.12f, Aa) * Mathf.Clamp01((len - 0.2f) * 8f));
+            Gloss(ref p, x, y, -0.26f, 0.22f, 0.13f, 0.07f, fan);
         }
 
         // ---------------------------------------------------------------- perla
 
-        private static void Pearl(ref Acc acc, int variant, float x, float y)
+        private static void Pearl(ref Px p, int variant, float x, float y)
         {
-            Color light = variant == 0 ? Hex(0xFFFFFF) : Hex(0xECFEFF);
-            Color mid = variant == 0 ? Hex(0xFCE7F3) : Hex(0xA5F3FC);
-            Color edge = variant == 0 ? Hex(0xE9B7D0) : Hex(0x67C7DA);
-            Color outline = variant == 0 ? Hex(0xA8688A) : Hex(0x2B7A90);
-
-            float len = Mathf.Sqrt(x * x + y * y);
-            float sdf = len - 0.62f;
-            acc.Over(outline, Edge(sdf - 0.05f));
-            // Esfera: degradé radial con la luz arriba-izquierda.
-            float lx = x + 0.20f, ly = y - 0.22f;
-            float t = Mathf.Clamp01(Mathf.Sqrt(lx * lx + ly * ly) / 0.95f);
-            Color c = t < 0.55f ? Color.Lerp(light, mid, t / 0.55f) : Color.Lerp(mid, edge, (t - 0.55f) / 0.45f);
-            acc.Over(c, Edge(sdf));
-            Gloss(ref acc, x, y, -0.24f, 0.26f, 0.20f, 0.12f, Edge(sdf + 0.02f));
-            // Reflejo pequeño abajo-derecha.
-            float rx = x - 0.24f, ry = y + 0.24f;
-            acc.Over(new Color(1f, 1f, 1f, 0.28f), Edge((Mathf.Sqrt(rx * rx + ry * ry) - 0.10f)) * Edge(sdf + 0.03f));
-        }
-
-        private static void Gloss(ref Acc acc, float x, float y, float cx, float cy, float rx, float ry, float mask)
-        {
-            float gx = (x - cx) / rx, gy = (y - cy) / ry;
-            float d = Mathf.Sqrt(gx * gx + gy * gy);
-            float a = Mathf.Clamp01(1f - d) * 0.62f;
-            acc.Over(new Color(1f, 1f, 1f, a), mask);
+            Color main = variant == 0 ? Cream : Tint(Sky, 0.55f);
+            float body = Circle(x, y, 0f, 0.02f, 0.60f);
+            p.Over(main, Cover(body, Aa));
+            // Sombra propia abajo a la derecha (media luna), plana como en la arcilla de la app.
+            p.Over(Shade(main, 0.86f), Cover(Mathf.Max(body, -Circle(x, y, -0.10f, 0.12f, 0.58f)), Aa));
+            Gloss(ref p, x, y, -0.20f, 0.26f, 0.17f, 0.10f, body);
+            p.Over(new Color(1f, 1f, 1f, 0.9f), Cover(Circle(x, y, 0.08f, 0.36f, 0.05f), Aa));
         }
     }
 }

@@ -48,3 +48,5 @@ __pycache__/
 # Verificación de compilación de Unity sin Unity (tools/unity-compile-check)
 tools/unity-compile-check/bin/
 tools/unity-compile-check/obj/
+tools/art-preview/bin/
+tools/art-preview/obj/

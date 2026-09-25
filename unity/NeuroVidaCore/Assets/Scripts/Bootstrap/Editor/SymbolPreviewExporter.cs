@@ -70,9 +70,9 @@ namespace NeuroVida.Bridge.EditorTools
             int iconW = (int)(cell * 0.80f);
             int iconH = (int)(cell * 0.76f);
             Blit(sheet, width, CardSprites.Get(CardSprites.Face.Front).texture, 3 * cell, 0, cell, cell);
-            Blit(sheet, width, SymbolSprite.Get(ShapeKind.Apple, 0).texture, 3 * cell + iconX, iconY, iconW, iconH);
+            Blit(sheet, width, SymbolSprite.Get(ShapeKind.Planet, 0).texture, 3 * cell + iconX, iconY, iconW, iconH);
             Blit(sheet, width, CardSprites.Get(CardSprites.Face.Matched).texture, 4 * cell, 0, cell, cell);
-            Blit(sheet, width, SymbolSprite.Get(ShapeKind.Fish, 0).texture, 4 * cell + iconX, iconY, iconW, iconH);
+            Blit(sheet, width, SymbolSprite.Get(ShapeKind.Rocket, 0).texture, 4 * cell + iconX, iconY, iconW, iconH);
 
             Save(sheet, width, cell, path);
         }

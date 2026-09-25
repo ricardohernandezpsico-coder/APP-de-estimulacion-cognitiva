@@ -1,22 +1,20 @@
 using System.Collections.Generic;
 using UnityEngine;
+using static NeuroVida.Games.Shared.ClayRaster;
 
 namespace NeuroVida.Games.Parejas
 {
     /// <summary>
-    /// Sprites procedurales de las cartas de Parejas Ocultas, estilo "clay" (ficha 3D
-    /// gruesa: cara con degradé + borde claro + labio inferior más oscuro que da el
-    /// grosor). Recomendado por la skill ui-ux-pro-max para juegos casuales/educativos y
-    /// alineado con lo que hacen las apps de entrenamiento mental de la Play Store.
+    /// Cartas de Parejas Ocultas en arcilla, con el sello de la app: cara de color plano, borde tinta grueso,
+    /// sombra dura tinta hacia abajo (el "grosor" de la ficha) y brillo nítido.
     ///
-    /// - <see cref="Face.Back"/>: dorso violeta con patrón de rombos y un destello central.
-    /// - <see cref="Face.Front"/>: frente casi blanco -- deja que los íconos ilustrados
-    ///   resalten con máximo contraste (importante para baja visión; antes la cara
-    ///   frontal era azul pizarra oscuro y los símbolos se perdían).
-    /// - <see cref="Face.Matched"/>: verde menta, pareja resuelta.
+    /// - <see cref="Face.Back"/>: uva, con un panel hundido y un destello crema de 4 puntas (el cielo de la app).
+    /// - <see cref="Face.Front"/>: crema, sin adornos: el ícono es lo único que se mira.
+    /// - <see cref="Face.Matched"/>: lima claro con un sello ✓ en la esquina (resuelta; no depende solo del color).
     ///
-    /// La textura ya trae los colores: el <c>Image.color</c> normal es blanco (se usa un
-    /// tinte solo para efectos puntuales, como el destello rojo de un error).
+    /// La textura ya trae los colores: el <c>Image.color</c> normal es blanco (el tinte se usa solo para
+    /// efectos puntuales, como el destello rojo de un error). Misma huella que la versión anterior
+    /// (<see cref="ShapeScale"/>): el tablero no cambia de tamaño.
     /// </summary>
     public static class CardSprites
     {
@@ -28,168 +26,99 @@ namespace NeuroVida.Games.Parejas
         }
 
         private const int SizePx = 256;
-        private const float Aa = 0.014f;
+        private const float ShapeScale = 0.86f;   // la ficha ocupa este tanto del sprite
+        private const float Aa = 0.018f;
+        private const float Line = 0.07f;         // borde tinta (coordenadas de la ficha)
+        private const float Drop = 0.12f;         // sombra dura
+        private const float FaceY = 0.07f, HalfW = 0.90f, HalfH = 0.83f, Corner = 0.28f;
+
+        private static readonly Color BackColor = Grape;
+        private static readonly Color FrontColor = Cream;
+        private static readonly Color MatchedColor = Hex(0xE2F8C8);
+
         private static readonly Dictionary<Face, Sprite> Cache = new Dictionary<Face, Sprite>();
 
         public static Sprite Get(Face face)
         {
-            if (Cache.TryGetValue(face, out var cached)) return cached;
-
-            var pixels = new Color32[SizePx * SizePx];
-            for (int y = 0; y < SizePx; y++)
-            {
-                for (int x = 0; x < SizePx; x++)
-                {
-                    float nx = (x + 0.5f) / SizePx * 2f - 1f;
-                    float ny = (y + 0.5f) / SizePx * 2f - 1f;
-                    pixels[y * SizePx + x] = PixelFor(face, nx, ny);
-                }
-            }
-
-            var texture = new Texture2D(SizePx, SizePx, TextureFormat.RGBA32, false);
-            texture.filterMode = FilterMode.Bilinear;
-            texture.wrapMode = TextureWrapMode.Clamp;
-            texture.SetPixels32(pixels);
-            texture.Apply();
-
-            var sprite = Sprite.Create(texture, new Rect(0, 0, SizePx, SizePx), new Vector2(0.5f, 0.5f), SizePx);
+            if (Cache.TryGetValue(face, out var cached) && cached != null) return cached;
+            var sprite = ToSprite(Render(face, SizePx), SizePx, SizePx);
             Cache[face] = sprite;
             return sprite;
         }
 
-        private static float EdgeStep(float sdf) => Mathf.Clamp01(0.5f - sdf / Aa);
-
-        private static float RoundBoxSdf(float x, float y, float cx, float cy, float hx, float hy, float r)
+        /// <summary>Píxeles de la carta (fila 0 = abajo). Separado de <see cref="Get"/> para previsualizar fuera de Unity.</summary>
+        public static Color32[] Render(Face face, int size)
         {
-            float qx = Mathf.Abs(x - cx) - hx + r;
-            float qy = Mathf.Abs(y - cy) - hy + r;
-            float ox = Mathf.Max(qx, 0f);
-            float oy = Mathf.Max(qy, 0f);
-            return Mathf.Sqrt(ox * ox + oy * oy) + Mathf.Min(Mathf.Max(qx, qy), 0f) - r;
+            var pixels = new Color32[size * size];
+            for (int py = 0; py < size; py++)
+            {
+                for (int px = 0; px < size; px++)
+                {
+                    float x = ((px + 0.5f) / size * 2f - 1f) / ShapeScale;
+                    float y = ((py + 0.5f) / size * 2f - 1f) / ShapeScale;
+                    pixels[py * size + px] = PaintCard(face, x, y).ToColor32();
+                }
+            }
+            return pixels;
         }
 
-        private static Color Hex(int rgb)
+        private static Px PaintCard(Face face, float x, float y)
         {
-            return new Color(((rgb >> 16) & 0xFF) / 255f, ((rgb >> 8) & 0xFF) / 255f, (rgb & 0xFF) / 255f, 1f);
+            var p = new Px();
+            float card = RoundBox(x, y, 0f, FaceY, HalfW, HalfH, Corner);
+            float shadow = RoundBox(x, y, 0f, FaceY - Drop, HalfW, HalfH, Corner);
+            p.Over(Ink, Cover(shadow - Line, Aa));
+            p.Over(Ink, Cover(card - Line, Aa));
+
+            Color fill = face == Face.Back ? BackColor : face == Face.Matched ? MatchedColor : FrontColor;
+            p.Over(fill, Cover(card, Aa));
+
+            if (face == Face.Back) BackArt(ref p, x, y);
+
+            // Brillo de arcilla arriba a la izquierda.
+            float gloss = Ellipse(x, y, -0.46f, FaceY + 0.62f, 0.26f, 0.07f);
+            p.Over(new Color(1f, 1f, 1f, face == Face.Back ? 0.4f : 0.7f), Cover(gloss, Aa) * Cover(card + 0.04f, Aa));
+
+            if (face == Face.Matched) CheckBadge(ref p, x, y);
+            return p;
         }
 
-        // Compositor "over" sobre RGB premultiplicado.
-        private struct Acc
+        private static void BackArt(ref Px p, float x, float y)
         {
-            public float r, g, b, a;
+            // Panel hundido: más oscuro, con un canto de tinta suave arriba (la sombra interior del hueco).
+            float panel = RoundBox(x, y, 0f, FaceY - 0.02f, 0.64f, 0.58f, 0.16f);
+            float panelDown = RoundBox(x, y, 0f, FaceY - 0.07f, 0.64f, 0.58f, 0.16f);
+            p.Over(Shade(BackColor, 0.84f), Cover(panel, Aa));
+            p.Over(WithAlpha(Ink, 0.3f), Cover(Mathf.Max(panel, -panelDown), Aa));
 
-            public void Over(Color c, float coverage)
-            {
-                float sa = c.a * coverage;
-                if (sa <= 0f) return;
-                r = c.r * sa + r * (1f - sa);
-                g = c.g * sa + g * (1f - sa);
-                b = c.b * sa + b * (1f - sa);
-                a = sa + a * (1f - sa);
-            }
+            // Puntos de estrellas lejanas.
+            float dots = Mathf.Min(
+                Mathf.Min(Circle(x, y, -0.42f, 0.44f, 0.03f), Circle(x, y, 0.44f, -0.30f, 0.03f)),
+                Mathf.Min(Circle(x, y, 0.38f, 0.50f, 0.022f), Circle(x, y, -0.36f, -0.38f, 0.022f)));
+            p.Over(WithAlpha(Cream, 0.8f), Cover(dots, Aa));
 
-            public Color32 ToColor32()
-            {
-                float rr = a > 0.0001f ? r / a : 0f;
-                float gg = a > 0.0001f ? g / a : 0f;
-                float bb = a > 0.0001f ? b / a : 0f;
-                return new Color32(
-                    (byte)(Mathf.Clamp01(rr) * 255f),
-                    (byte)(Mathf.Clamp01(gg) * 255f),
-                    (byte)(Mathf.Clamp01(bb) * 255f),
-                    (byte)(Mathf.Clamp01(a) * 255f));
-            }
+            // Destello central de arcilla: sombra dura, borde tinta y relleno crema; uno chico al lado.
+            float cy = FaceY + 0.02f;
+            float big = Star(x, y, 0f, cy, 4, 0.40f, 2.35f, 0.03f);
+            float bigShadow = Star(x, y + 0.05f, 0f, cy, 4, 0.40f, 2.35f, 0.03f);
+            p.Over(Ink, Cover(bigShadow - 0.05f, Aa));
+            p.Over(Ink, Cover(big - 0.05f, Aa));
+            p.Over(Cream, Cover(big, Aa));
+            float small = Star(x, y, 0.36f, cy + 0.30f, 4, 0.15f, 2.35f, 0.01f);
+            p.Over(Ink, Cover(small - 0.04f, Aa));
+            p.Over(Sun, Cover(small, Aa));
         }
 
-        // La ficha ocupa solo ShapeScale del sprite: el resto es margen para la sombra
-        // suave horneada (reemplaza al componente Shadow de uGUI, que duplicaba la malla y
-        // se veía con el borde duro/pixeleado).
-        private const float ShapeScale = 0.86f;
-
-        private static Color32 PixelFor(Face face, float nx, float ny)
+        private static void CheckBadge(ref Px p, float x, float y)
         {
-            float sx = nx / ShapeScale, sy = ny / ShapeScale;
-            Color32 shape = ShapePixel(face, sx, sy);
-            float shadowSd = RoundBoxSdf(sx, sy + 0.16f, 0f, -0.05f, 0.93f, 0.86f, 0.30f) * ShapeScale;
-            float sh = 0.40f * (1f - Mathf.SmoothStep(0f, 1f, Mathf.Clamp01((shadowSd + 0.03f) / 0.24f)));
-            float sa = shape.a / 255f;
-            float outA = sa + sh * (1f - sa);
-            if (outA <= 0.0001f) return new Color32(0, 0, 0, 0);
-            float k = sa / outA; // el sombreado es negro: solo aporta alfa
-            return new Color32((byte)(shape.r * k), (byte)(shape.g * k), (byte)(shape.b * k), (byte)(outA * 255f));
-        }
-
-        private static Color32 ShapePixel(Face face, float nx, float ny)
-        {
-            Color faceTop, faceBottom, border, lip;
-            switch (face)
-            {
-                case Face.Back:
-                    faceTop = Hex(0x9A8CFF);
-                    faceBottom = Hex(0x5B45E0);
-                    border = Hex(0xDCD4FF);
-                    lip = Hex(0x33208F);
-                    break;
-                case Face.Matched:
-                    faceTop = Hex(0xEAFFF1);
-                    faceBottom = Hex(0x8CEDAE);
-                    border = Hex(0x22C55E);
-                    lip = Hex(0x15803D);
-                    break;
-                default:
-                    faceTop = Hex(0xFFFFFF);
-                    faceBottom = Hex(0xEDE8FB);
-                    border = Hex(0xC7BAF3);
-                    lip = Hex(0x9A8DD4);
-                    break;
-            }
-
-            var acc = new Acc();
-
-            // Labio inferior (el "grosor" de la ficha), desplazado hacia abajo.
-            float lipSdf = RoundBoxSdf(nx, ny, 0f, -0.05f, 0.93f, 0.86f, 0.30f);
-            acc.Over(lip, EdgeStep(lipSdf));
-
-            // Cara: borde claro + interior con degradé vertical.
-            float faceSdf = RoundBoxSdf(nx, ny, 0f, 0.07f, 0.93f, 0.86f, 0.30f);
-            acc.Over(border, EdgeStep(faceSdf));
-
-            const float borderWidth = 0.06f;
-            float innerSdf = faceSdf + borderWidth;
-            float t = Mathf.Clamp01((0.93f - ny) / 1.7f);
-            var fill = Color.Lerp(faceTop, faceBottom, t);
-            float innerMask = EdgeStep(innerSdf);
-            acc.Over(fill, innerMask);
-
-            // Brillo suave en el tercio superior de la cara.
-            float gloss = Mathf.Clamp01((ny - 0.38f) / 0.5f);
-            acc.Over(new Color(1f, 1f, 1f, 0.22f), gloss * innerMask);
-
-            if (face == Face.Back)
-            {
-                // Patrón de rombos sutil.
-                float u = (nx + ny) * 2.2f;
-                float v = (nx - ny) * 2.2f;
-                float lineU = Mathf.Abs(u - Mathf.Floor(u) - 0.5f);
-                float lineV = Mathf.Abs(v - Mathf.Floor(v) - 0.5f);
-                float line = Mathf.Min(lineU, lineV);
-                float lineAlpha = Mathf.Clamp01(1f - line / 0.03f) * 0.10f;
-                acc.Over(Color.white, lineAlpha * innerMask);
-
-                // Destello central: halo + estrella de 4 puntas.
-                float cx = nx;
-                float cy = ny - 0.07f;
-                float radial = Mathf.Sqrt(cx * cx + cy * cy);
-                float halo = Mathf.Clamp01(1f - radial / 0.55f);
-                acc.Over(Color.white, halo * halo * 0.22f * innerMask);
-
-                float dx = Mathf.Abs(cx) / 0.42f;
-                float dy = Mathf.Abs(cy) / 0.42f;
-                float star = Mathf.Pow(dx, 0.55f) + Mathf.Pow(dy, 0.55f) - 1f;
-                acc.Over(new Color(1f, 1f, 1f, 0.95f), EdgeStep(star * 0.30f) * innerMask);
-            }
-
-            return acc.ToColor32();
+            const float bx = 0.70f, by = FaceY + 0.62f, r = 0.19f;
+            p.Over(Ink, Cover(Circle(x, y + 0.05f, bx, by, r) - 0.05f, Aa));
+            p.Over(Ink, Cover(Circle(x, y, bx, by, r) - 0.05f, Aa));
+            p.Over(Lime, Cover(Circle(x, y, bx, by, r), Aa));
+            float check = Mathf.Min(
+                Capsule(x, y, bx - 0.09f, by + 0.0f, bx - 0.025f, by - 0.07f, 0.035f),
+                Capsule(x, y, bx - 0.025f, by - 0.07f, bx + 0.10f, by + 0.08f, 0.035f));
+            p.Over(Ink, Cover(check, Aa));
         }
     }
 }

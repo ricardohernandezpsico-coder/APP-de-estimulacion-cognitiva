@@ -77,6 +77,8 @@ namespace NeuroVida.Games.Parejas
     /// las cartas se veían vacías (bug reportado por Ricardo jugando en el dispositivo,
     /// 23-sep).
     ///
+    /// Los objetos son del cielo nocturno (planeta, cohete, cometa...; ver <see cref="ShapeKind"/>).
+    ///
     /// Gradiente de dificultad, siempre con colores vívidos (Ricardo: "los símbolos son
     /// muy opacos, oscuros, difíciles de recordar"): tier 0 = objetos y colores muy
     /// distintos; tier 1 = más variedad de objetos; tier 2 = mismo objeto en dos colores
@@ -86,55 +88,55 @@ namespace NeuroVida.Games.Parejas
     {
         private static readonly SymbolDef[][] Tiers =
         {
-            // Tier 0: 8 objetos cotidianos, cada uno de un color dominante distinto.
+            // Tier 0: 8 objetos de siluetas muy distintas, de colores distintos.
             new[]
             {
-                new SymbolDef(ShapeKind.Apple, 0),
+                new SymbolDef(ShapeKind.Planet, 0),
+                new SymbolDef(ShapeKind.Rocket, 0),
                 new SymbolDef(ShapeKind.Star, 0),
-                new SymbolDef(ShapeKind.Drop, 0),
-                new SymbolDef(ShapeKind.Sun, 0),
-                new SymbolDef(ShapeKind.Flower, 0),
-                new SymbolDef(ShapeKind.Clover, 0),
-                new SymbolDef(ShapeKind.Cloud, 0),
-                new SymbolDef(ShapeKind.Crown, 0),
+                new SymbolDef(ShapeKind.Comet, 0),
+                new SymbolDef(ShapeKind.Ufo, 0),
+                new SymbolDef(ShapeKind.Crystal, 1),
+                new SymbolDef(ShapeKind.Helmet, 0),
+                new SymbolDef(ShapeKind.Moon, 2),
             },
             // Tier 1: más objetos, algunos repiten forma con otro color.
             new[]
             {
-                new SymbolDef(ShapeKind.Heart, 0),
-                new SymbolDef(ShapeKind.Fish, 0),
-                new SymbolDef(ShapeKind.Mushroom, 0),
-                new SymbolDef(ShapeKind.Balloon, 2),
+                new SymbolDef(ShapeKind.Sun, 0),
+                new SymbolDef(ShapeKind.Satellite, 0),
+                new SymbolDef(ShapeKind.Asteroid, 0),
+                new SymbolDef(ShapeKind.Telescope, 1),
+                new SymbolDef(ShapeKind.Constellation, 0),
                 new SymbolDef(ShapeKind.Moon, 1),
-                new SymbolDef(ShapeKind.Gem, 0),
-                new SymbolDef(ShapeKind.Apple, 1),
-                new SymbolDef(ShapeKind.Star, 1),
-                new SymbolDef(ShapeKind.Flower, 1),
-                new SymbolDef(ShapeKind.Drop, 1),
+                new SymbolDef(ShapeKind.Planet, 1),
+                new SymbolDef(ShapeKind.Rocket, 1),
+                new SymbolDef(ShapeKind.Comet, 1),
+                new SymbolDef(ShapeKind.Ufo, 1),
             },
             // Tier 2: pares del mismo objeto en dos colores claramente distintos.
             new[]
             {
-                new SymbolDef(ShapeKind.Heart, 0),
-                new SymbolDef(ShapeKind.Heart, 1),
-                new SymbolDef(ShapeKind.Balloon, 0),
-                new SymbolDef(ShapeKind.Balloon, 1),
-                new SymbolDef(ShapeKind.Fish, 0),
-                new SymbolDef(ShapeKind.Fish, 2),
-                new SymbolDef(ShapeKind.Crown, 0),
-                new SymbolDef(ShapeKind.Crown, 1),
+                new SymbolDef(ShapeKind.Planet, 0),
+                new SymbolDef(ShapeKind.Planet, 2),
+                new SymbolDef(ShapeKind.Rocket, 0),
+                new SymbolDef(ShapeKind.Rocket, 2),
+                new SymbolDef(ShapeKind.Crystal, 0),
+                new SymbolDef(ShapeKind.Crystal, 1),
+                new SymbolDef(ShapeKind.Ufo, 0),
+                new SymbolDef(ShapeKind.Ufo, 2),
             },
             // Tier 3 (máxima interferencia): pares del mismo objeto en tonos análogos.
             new[]
             {
-                new SymbolDef(ShapeKind.Apple, 0),
-                new SymbolDef(ShapeKind.Apple, 3),
                 new SymbolDef(ShapeKind.Star, 0),
                 new SymbolDef(ShapeKind.Star, 3),
-                new SymbolDef(ShapeKind.Drop, 0),
-                new SymbolDef(ShapeKind.Drop, 3),
-                new SymbolDef(ShapeKind.Flower, 0),
-                new SymbolDef(ShapeKind.Flower, 3),
+                new SymbolDef(ShapeKind.Planet, 0),
+                new SymbolDef(ShapeKind.Planet, 3),
+                new SymbolDef(ShapeKind.Comet, 0),
+                new SymbolDef(ShapeKind.Comet, 3),
+                new SymbolDef(ShapeKind.Crystal, 0),
+                new SymbolDef(ShapeKind.Crystal, 3),
             },
         };
 
