@@ -33,7 +33,6 @@ namespace NeuroVida.Games.Comparacion
         private const int TimeUp = -3;
         private const float ShapeScale = 0.86f; // la ficha ocupa 86% del sprite (el resto es sombra)
 
-        private static readonly Color BackgroundColor = new Color(0x0F / 255f, 0x17 / 255f, 0x2A / 255f);
         private static readonly Color AccentColor = new Color(0xF5 / 255f, 0x9E / 255f, 0x0B / 255f);
         private static readonly Color GoodColor = new Color(0x22 / 255f, 0xC5 / 255f, 0x5E / 255f);
         private static readonly Color BadColor = new Color(0xEF / 255f, 0x44 / 255f, 0x44 / 255f);
@@ -438,10 +437,8 @@ namespace NeuroVida.Games.Comparacion
             bg.transform.SetParent(canvasGo.transform, false);
             var bgRect = bg.AddComponent<RectTransform>();
             Stretch(bgRect);
-            bg.AddComponent<Image>().color = BackgroundColor;
-            UiFx.AddBackgroundGlow(bg.transform, new Vector2(0.12f, 0.88f), 1500f, new Color(0.96f, 0.62f, 0.04f, 0.16f));
-            UiFx.AddBackgroundGlow(bg.transform, new Vector2(0.92f, 0.10f), 1400f, new Color(0.23f, 0.51f, 0.96f, 0.22f));
-            bg.AddComponent<CountdownAmbient>().Build(bgRect, 8);
+            // Mundo "PlanetDuel": cielo nocturno de la app + su elemento propio (ver Shared/WorldBackdrop.cs).
+            WorldBackdrop.Build(bgRect, GameWorld.PlanetDuel);
 
             var safeGo = new GameObject("SafeAreaContent");
             safeGo.transform.SetParent(canvasGo.transform, false);

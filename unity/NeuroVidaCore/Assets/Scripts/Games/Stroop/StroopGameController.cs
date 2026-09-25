@@ -33,7 +33,6 @@ namespace NeuroVida.Games.Stroop
         private const float MarginU = 60f;
         private const float NoAnswer = -2f;
 
-        private static readonly Color BackgroundColor = new Color(0x0F / 255f, 0x17 / 255f, 0x2A / 255f);
         private static readonly Color CardFill = new Color(0x1B / 255f, 0x27 / 255f, 0x40 / 255f);
         private static readonly Color InkAccent = new Color(0x60 / 255f, 0xA5 / 255f, 0xFA / 255f);
         private static readonly Color WordAccent = new Color(0x34 / 255f, 0xD3 / 255f, 0x99 / 255f);
@@ -380,10 +379,8 @@ namespace NeuroVida.Games.Stroop
             bg.transform.SetParent(canvasGo.transform, false);
             var bgRect = bg.AddComponent<RectTransform>();
             Stretch(bgRect);
-            bg.AddComponent<Image>().color = BackgroundColor;
-            UiFx.AddBackgroundGlow(bg.transform, new Vector2(0.12f, 0.88f), 1500f, new Color(0.23f, 0.51f, 0.96f, 0.22f));
-            UiFx.AddBackgroundGlow(bg.transform, new Vector2(0.92f, 0.10f), 1400f, new Color(0.66f, 0.33f, 0.97f, 0.20f));
-            bg.AddComponent<CountdownAmbient>().Build(bgRect, 8);
+            // Mundo "Neon": cielo nocturno de la app + su elemento propio (ver Shared/WorldBackdrop.cs).
+            WorldBackdrop.Build(bgRect, GameWorld.Neon);
 
             var safeGo = new GameObject("SafeAreaContent");
             safeGo.transform.SetParent(canvasGo.transform, false);

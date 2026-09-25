@@ -31,7 +31,6 @@ namespace NeuroVida.Games.Calculo
         private const int Splashed = -4; // la burbuja tocó el agua
         private const float ShapeScale = 0.86f;
 
-        private static readonly Color BackgroundColor = new Color(0x06 / 255f, 0x22 / 255f, 0x36 / 255f);
         private static readonly Color Aqua = new Color(0x38 / 255f, 0xBD / 255f, 0xF8 / 255f);
         private static readonly Color BubbleCalm = new Color(0xE0 / 255f, 0xF2 / 255f, 0xFE / 255f);
         private static readonly Color BubbleWarn = new Color(0xFE / 255f, 0xF3 / 255f, 0xC7 / 255f);
@@ -449,10 +448,8 @@ namespace NeuroVida.Games.Calculo
             bg.transform.SetParent(canvasGo.transform, false);
             var bgRect = bg.AddComponent<RectTransform>();
             Stretch(bgRect);
-            bg.AddComponent<Image>().color = BackgroundColor;
-            UiFx.AddBackgroundGlow(bg.transform, new Vector2(0.15f, 0.90f), 1500f, new Color(0.22f, 0.74f, 0.97f, 0.20f));
-            UiFx.AddBackgroundGlow(bg.transform, new Vector2(0.90f, 0.15f), 1400f, new Color(0.65f, 0.55f, 0.98f, 0.14f));
-            bg.AddComponent<CountdownAmbient>().Build(bgRect, 10);
+            // Mundo "MoonPond": cielo nocturno de la app + su elemento propio (ver Shared/WorldBackdrop.cs).
+            WorldBackdrop.Build(bgRect, GameWorld.MoonPond);
 
             var safeGo = new GameObject("SafeAreaContent");
             safeGo.transform.SetParent(canvasGo.transform, false);

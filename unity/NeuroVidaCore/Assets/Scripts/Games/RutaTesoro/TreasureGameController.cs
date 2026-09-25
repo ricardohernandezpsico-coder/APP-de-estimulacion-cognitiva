@@ -26,7 +26,6 @@ namespace NeuroVida.Games.RutaTesoro
         private const float MarginU = 60f;
         private const float ShapeScale = 0.86f;
 
-        private static readonly Color BackgroundColor = new Color(0x08 / 255f, 0x1B / 255f, 0x36 / 255f);
         private static readonly Color SandColor = new Color(0xF0 / 255f, 0xD9 / 255f, 0xA6 / 255f);
         private static readonly Color RevealColor = new Color(0x7D / 255f, 0xD3 / 255f, 0xFC / 255f); // celeste suave: nada dorado (parecía tragamonedas)
         private static readonly Color FoundColor = new Color(0x2D / 255f, 0xD4 / 255f, 0xBF / 255f);
@@ -483,15 +482,12 @@ namespace NeuroVida.Games.RutaTesoro
             scaler.matchWidthOrHeight = 0f;
             canvasGo.AddComponent<GraphicRaycaster>();
 
-            // Fondo "mar profundo" con dos resplandores (turquesa y dorado) y burbujas.
             var bg = new GameObject("Background");
             bg.transform.SetParent(canvasGo.transform, false);
             var bgRect = bg.AddComponent<RectTransform>();
             Stretch(bgRect);
-            bg.AddComponent<Image>().color = BackgroundColor;
-            UiFx.AddBackgroundGlow(bg.transform, new Vector2(0.15f, 0.90f), 1500f, new Color(0.18f, 0.83f, 0.75f, 0.20f));
-            UiFx.AddBackgroundGlow(bg.transform, new Vector2(0.90f, 0.10f), 1400f, new Color(0.98f, 0.55f, 0.45f, 0.13f));
-            bg.AddComponent<CountdownAmbient>().Build(bgRect, 10);
+            // Mundo "MoonlitIsland": cielo nocturno de la app + su elemento propio (ver Shared/WorldBackdrop.cs).
+            WorldBackdrop.Build(bgRect, GameWorld.MoonlitIsland);
 
             var safeGo = new GameObject("SafeAreaContent");
             safeGo.transform.SetParent(canvasGo.transform, false);

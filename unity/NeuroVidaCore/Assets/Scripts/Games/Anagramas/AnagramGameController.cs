@@ -29,7 +29,6 @@ namespace NeuroVida.Games.Anagramas
         private const float ShapeScale = 0.86f;
         private const int MaxLetters = 11;
 
-        private static readonly Color BackgroundColor = new Color(0x18 / 255f, 0x0F / 255f, 0x2E / 255f);
         private static readonly Color Accent = new Color(0xF4 / 255f, 0x72 / 255f, 0xB6 / 255f);
         private static readonly Color TileCream = new Color(0xFD / 255f, 0xE9 / 255f, 0xC8 / 255f);
         private static readonly Color TilePlaced = new Color(0xFF / 255f, 0xD1 / 255f, 0x7A / 255f);
@@ -465,10 +464,8 @@ namespace NeuroVida.Games.Anagramas
             bg.transform.SetParent(canvasGo.transform, false);
             var bgRect = bg.AddComponent<RectTransform>();
             Stretch(bgRect);
-            bg.AddComponent<Image>().color = BackgroundColor;
-            UiFx.AddBackgroundGlow(bg.transform, new Vector2(0.12f, 0.88f), 1500f, new Color(0.96f, 0.45f, 0.71f, 0.17f));
-            UiFx.AddBackgroundGlow(bg.transform, new Vector2(0.92f, 0.12f), 1400f, new Color(0.55f, 0.36f, 0.96f, 0.18f));
-            bg.AddComponent<CountdownAmbient>().Build(bgRect, 8);
+            // Mundo "SkyLetters": cielo nocturno de la app + su elemento propio (ver Shared/WorldBackdrop.cs).
+            WorldBackdrop.Build(bgRect, GameWorld.SkyLetters);
 
             var safeGo = new GameObject("SafeAreaContent");
             safeGo.transform.SetParent(canvasGo.transform, false);

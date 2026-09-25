@@ -115,7 +115,6 @@ namespace NeuroVida.Games.Secuencia
         private AudioSource _audioSource;
         private AudioSource _distractorAudioSource; // sin AudioReverbFilter -- el drone no debe sonar "en la sala" como los tonos reales
 
-        private static readonly Color BackgroundColor = new Color(0x0F / 255f, 0x17 / 255f, 0x2A / 255f);
         private static readonly Color PhaseBlue = new Color(0x3B / 255f, 0x82 / 255f, 0xF6 / 255f);
         private static readonly Color PhaseGreen = new Color(0x22 / 255f, 0xC5 / 255f, 0x5E / 255f);
         private static readonly Color PhaseAmber = new Color(0xF5 / 255f, 0x9E / 255f, 0x0B / 255f);
@@ -468,14 +467,8 @@ namespace NeuroVida.Games.Secuencia
             backgroundRect.anchorMax = Vector2.one;
             backgroundRect.offsetMin = Vector2.zero;
             backgroundRect.offsetMax = Vector2.zero;
-            backgroundGo.AddComponent<Image>().color = BackgroundColor;
-
-            // Profundidad: dos resplandores suaves y burbujas de luz que suben despacio.
-            UiFx.AddBackgroundGlow(backgroundGo.transform, new Vector2(0.15f, 0.85f), 1500f, new Color(0.49f, 0.36f, 0.95f, 0.24f));
-            UiFx.AddBackgroundGlow(backgroundGo.transform, new Vector2(0.9f, 0.12f), 1400f, new Color(0.23f, 0.51f, 0.96f, 0.20f));
-            backgroundGo.AddComponent<CountdownAmbient>().Build(backgroundRect, 8);
-
-            // Safe Area real: todo el HUD/grilla/texto vive DENTRO de esto.
+            // Mundo "Constellation": cielo nocturno de la app + su elemento propio (ver Shared/WorldBackdrop.cs).
+            WorldBackdrop.Build(backgroundRect, GameWorld.Constellation);
             var safeAreaGo = new GameObject("SafeAreaContent");
             safeAreaGo.transform.SetParent(canvasGo.transform, false);
             _safeAreaContentRect = safeAreaGo.AddComponent<RectTransform>();

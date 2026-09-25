@@ -28,7 +28,6 @@ namespace NeuroVida.Games.CambioChip
         private const int TimeUp = -3;
         private const float ShapeScale = 0.86f;
 
-        private static readonly Color BackgroundColor = new Color(0x0F / 255f, 0x17 / 255f, 0x2A / 255f);
         private static readonly Color DirAccent = new Color(0x38 / 255f, 0xBD / 255f, 0xF8 / 255f);
         private static readonly Color PosAccent = new Color(0xF4 / 255f, 0x72 / 255f, 0xB6 / 255f);
         private static readonly Color GoodColor = new Color(0x22 / 255f, 0xC5 / 255f, 0x5E / 255f);
@@ -471,10 +470,8 @@ namespace NeuroVida.Games.CambioChip
             bg.transform.SetParent(canvasGo.transform, false);
             var bgRect = bg.AddComponent<RectTransform>();
             Stretch(bgRect);
-            bg.AddComponent<Image>().color = BackgroundColor;
-            UiFx.AddBackgroundGlow(bg.transform, new Vector2(0.12f, 0.88f), 1500f, new Color(0.22f, 0.74f, 0.97f, 0.18f));
-            UiFx.AddBackgroundGlow(bg.transform, new Vector2(0.92f, 0.10f), 1400f, new Color(0.96f, 0.45f, 0.71f, 0.16f));
-            bg.AddComponent<CountdownAmbient>().Build(bgRect, 8);
+            // Mundo "Orbits": cielo nocturno de la app + su elemento propio (ver Shared/WorldBackdrop.cs).
+            WorldBackdrop.Build(bgRect, GameWorld.Orbits);
 
             var safeGo = new GameObject("SafeAreaContent");
             safeGo.transform.SetParent(canvasGo.transform, false);

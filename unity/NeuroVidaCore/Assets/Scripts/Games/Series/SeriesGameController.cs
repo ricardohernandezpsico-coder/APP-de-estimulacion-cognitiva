@@ -29,7 +29,6 @@ namespace NeuroVida.Games.Series
         private const int TimeUp = -3;
         private const float ShapeScale = 0.86f;
 
-        private static readonly Color BackgroundColor = new Color(0x14 / 255f, 0x10 / 255f, 0x33 / 255f);
         private static readonly Color Accent = new Color(0xA7 / 255f, 0x8B / 255f, 0xFA / 255f);
         private static readonly Color LensColor = new Color(0xFB / 255f, 0xBF / 255f, 0x24 / 255f);
         private static readonly Color TermColor = new Color(0x5B / 255f, 0x6C / 255f, 0xF0 / 255f);
@@ -418,10 +417,8 @@ namespace NeuroVida.Games.Series
             bg.transform.SetParent(canvasGo.transform, false);
             var bgRect = bg.AddComponent<RectTransform>();
             Stretch(bgRect);
-            bg.AddComponent<Image>().color = BackgroundColor;
-            UiFx.AddBackgroundGlow(bg.transform, new Vector2(0.12f, 0.88f), 1500f, new Color(0.65f, 0.55f, 0.98f, 0.20f));
-            UiFx.AddBackgroundGlow(bg.transform, new Vector2(0.92f, 0.10f), 1400f, new Color(0.98f, 0.75f, 0.14f, 0.11f));
-            bg.AddComponent<CountdownAmbient>().Build(bgRect, 8);
+            // Mundo "MeteorShower": cielo nocturno de la app + su elemento propio (ver Shared/WorldBackdrop.cs).
+            WorldBackdrop.Build(bgRect, GameWorld.MeteorShower);
 
             var safeGo = new GameObject("SafeAreaContent");
             safeGo.transform.SetParent(canvasGo.transform, false);

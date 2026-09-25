@@ -130,7 +130,6 @@ namespace NeuroVida.Games.Parejas
         private AudioSource _audioSource;
         private readonly Dictionary<float, AudioClip> _toneCache = new Dictionary<float, AudioClip>();
 
-        private static readonly Color BackgroundColor = new Color(0x0F / 255f, 0x17 / 255f, 0x2A / 255f);
         private static readonly Color DomainMemoriaColor = new Color(0x3B / 255f, 0x82 / 255f, 0xF6 / 255f);
         // Las cartas traen sus colores en el sprite (ver CardSprites); estos son solo tintes
         // puntuales por encima (Image.color multiplica).
@@ -596,12 +595,8 @@ namespace NeuroVida.Games.Parejas
             backgroundRect.anchorMax = Vector2.one;
             backgroundRect.offsetMin = Vector2.zero;
             backgroundRect.offsetMax = Vector2.zero;
-            backgroundGo.AddComponent<Image>().color = BackgroundColor;
-
-            // Dos resplandores grandes y suaves (violeta arriba-izquierda, azul abajo-derecha)
-            // para que el fondo no sea un color plano -- el azul base es el mismo de siempre.
-            AddBackgroundGlow(backgroundGo.transform, new Vector2(0.15f, 0.85f), 1500f, new Color(0.49f, 0.36f, 0.95f, 0.26f));
-            AddBackgroundGlow(backgroundGo.transform, new Vector2(0.9f, 0.12f), 1400f, new Color(0.23f, 0.51f, 0.96f, 0.22f));
+            // Mundo "TwinMoons": cielo nocturno de la app + su elemento propio (ver Shared/WorldBackdrop.cs).
+            WorldBackdrop.Build(backgroundRect, GameWorld.TwinMoons);
 
             var safeAreaGo = new GameObject("SafeAreaContent");
             safeAreaGo.transform.SetParent(canvasGo.transform, false);
