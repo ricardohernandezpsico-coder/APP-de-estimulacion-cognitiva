@@ -253,3 +253,8 @@ Al cambiar esquema: 1) entidad, 2) subir version, 3) `Migration(N, N+1)` en SQL,
 
 ## Build tras quitar paquetes de Unity (24-sep)
 - `AppUIGameActivity` venía del paquete App UI, que llegaba transitivamente con `com.unity.ai.assistant`; al quitarlo dejó de existir. Los juegos usan `com.unity3d.player.UnityPlayerGameActivity` (manifest del plugin en `Assets/Plugins/Android`, manifest de la app y `UnityGameLauncher`). `app/build.gradle.kts` agrega `compileOnly(files(".../unity-classes.jar"))` porque en `unityLibrary` ese jar es `implementation` y la app no ve `UnityPlayer`. Tras esto el export baja a 388 MB y el APK a 115 MB. Probado por Ricardo en el teléfono: giro, Atrás a mitad de partida y resultado, todo OK.
+
+## Base común de controladores Unity — tramo 1: `UiKit` (25-sep)
+- `Games/Shared/UiKit.cs` (clase estática): `ApplySafeArea`, `Stretch`, `MakeText`, `BestFit`, `PlaceTopText`, `PopRect`, `PopIn`, `LocalIn`, copiadas tal cual. Los 7 controladores del DDA común borraron sus copias idénticas (50 funciones, ~570 líneas; un script comparó cada cuerpo con la versión compartida antes de borrarlo) y las usan con `using static NeuroVida.Games.Shared.UiKit;` (las llamadas no cambian). Secuencia y Parejas tienen versiones propias distintas y no se tocaron.
+- Sin cambio de comportamiento. NO compilado acá (sin Unity): correr la suite EditMode (108) y los 9 smoke tests antes de dar por bueno.
+- Tramo 2 (pendiente): clase base para lo que depende de campos de cada juego (`Awake`, `PlayTone` + caché de tonos, `Flash`, `AnimateResult`, `AddResultText`, `SetStreak`, panel de resultado, reloj de ronda).
