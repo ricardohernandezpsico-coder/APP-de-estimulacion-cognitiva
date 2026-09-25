@@ -283,3 +283,8 @@ Pedido de Ricardo: llevar el estilo de la app a los juegos sin que se vuelvan re
 - **Fichas/botones de los 9 juegos** (`Secuencia/TileSprites.cs`, el sprite que usan todos): de ficha gris con bisel y sombra difusa a arcilla: borde oscuro grueso, sombra dura sólida, cara con canto de luz, sombra interior y brillo. Misma huella (`ShapeScale` 0.86): no se mueve ningún layout. `TileSprites.GetPressed()` = cara hundida; `PressScale` cambia a esa ficha al presionar (y escala 0.97) en vez de encoger el botón.
 - `NeuroStyle.ClayFrame` (borde tinta + sombra dura con efectos de uGUI) en: botón "Continuar" (ahora sol con texto tinta, como "Entrenar" de la app), `Toast`, `PhasePill`, y el panel de resultado de los 7 juegos del DDA común (`GameControllerBase.StyleResultPanel`: superficie azul noche `NeuroStyle.Surface`, puntaje gigante en sol "de arcilla").
 - Cuenta regresiva: número de 118 a 140 dp.
+
+## Flujo de trabajo nube ↔ PC (25-sep)
+- Las sesiones en la nube editan, verifican C# con `tools/unity-compile-check` y hacen `git push` a la rama. Todo lo que necesita Unity, JDK, SDK o el teléfono corre en el PC de Ricardo (Git Bash, carpeta del repo): `git pull && bash tools/verificar-todo.sh --instalar` (escena piloto → EditMode 108 → smoke de los 9 juegos → REEXPORTAR → Gradle con tests Kotlin → instalar). El script no hace `git pull` por su cuenta.
+- Si algo falla: pegar las últimas 40 líneas del log correspondiente en `unity/test-results/v-*.log`.
+- Resultado 25-sep sobre `b6169f3`: 108/108, 9 smoke OK, export 390 MB, BUILD SUCCESSFUL, "estilo 25-sep" presente en el APK. Ricardo: cuenta regresiva aprobada ("muy bien"), mundos bien; detalles de pulido quedan para después.
