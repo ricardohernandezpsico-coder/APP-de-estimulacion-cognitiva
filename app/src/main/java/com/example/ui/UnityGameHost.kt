@@ -1,13 +1,5 @@
 package com.example.ui
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -15,15 +7,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.example.bridge.UnityGameLauncher
 import com.example.model.AgeBand
+import com.example.ui.components.GameLoadingScreen
 import com.example.viewmodel.ActiveGameSession
 
 /**
@@ -82,19 +72,13 @@ fun UnityGameHost(
     onLaunched()
   }
 
-  Column(
-    modifier = Modifier
-      .fillMaxSize()
-      .background(MaterialTheme.colorScheme.background),
-    horizontalAlignment = Alignment.CenterHorizontally,
-    verticalArrangement = Arrangement.Center
-  ) {
-    CircularProgressIndicator()
-    Text(
-      text = session.gameDef.title,
-      style = MaterialTheme.typography.titleMedium,
-      color = MaterialTheme.colorScheme.onBackground,
-      modifier = Modifier.padding(top = 16.dp)
-    )
-  }
+  // Mismo aspecto que la capa de carga encima de Unity (bridge/UnityLoadingOverlay): el paso app -> Unity no se
+  // nota. El cielo ya lo pinta la app detrás. Con Unity vivo (arranque en caliente) esto se ve una fracción de
+  // segundo: el contenido espera un poco antes de aparecer para no destellar.
+  GameLoadingScreen(
+    game = session.gameDef,
+    level = session.level,
+    timed = session.timed,
+    fadeInDelayMs = 250L
+  )
 }

@@ -122,6 +122,13 @@ object NativeReceiver {
     UnityPlayer.currentActivity?.intent?.getStringExtra(UnityGameLauncher.EXTRA_LAUNCH_ID)
 
   /**
+   * Unity ya pintó el juego (proceso `:unity`, hilo de Unity): se quita la pantalla de carga que cubría el
+   * arranque en frío ([UnityLoadingOverlay]). Sin capa visible no hace nada.
+   */
+  @JvmStatic
+  fun onGameShown() = UnityLoadingOverlay.hideFromAnyThread()
+
+  /**
    * Punto de entrada desde Unity al terminar la partida (proceso `:unity`). El resultado se guarda para
    * entregarlo junto con la vuelta a la app ([returnToApp]) y además viaja por un broadcast explícito al proceso
    * principal ([UnityResultReceiver] -> [handleFinished]), para no perderlo si el usuario nunca vuelve (Inicio,

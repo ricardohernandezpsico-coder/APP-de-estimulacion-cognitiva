@@ -17,6 +17,8 @@ class NeuroVidaApplication : Application() {
   override fun onCreate() {
     super.onCreate()
     instance = this
+    // Pantalla de carga sobre Unity mientras arranca en frío (solo actúa en el proceso `:unity`).
+    com.example.bridge.UnityLoadingOverlay.install(this)
   }
 
   companion object {

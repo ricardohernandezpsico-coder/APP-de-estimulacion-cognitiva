@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-
-    <!-- Fondo de ventana = cielo nocturno: al abrir la app no destella otro color antes del primer cuadro. -->
+    <!-- Android 12+: la pantalla de bienvenida del sistema también usa el cielo nocturno de la app. -->
     <style name="Theme.MyApplication" parent="android:Theme.DeviceDefault.NoActionBar">
         <item name="android:windowBackground">@color/nv_night</item>
+        <item name="android:windowSplashScreenBackground">@color/nv_night</item>
     </style>
 </resources>

@@ -108,6 +108,30 @@ namespace NeuroVida.Bridge
 #endif
         }
 
+        /// <summary>
+        /// El juego ya se ve en pantalla: el lado Kotlin (<c>NativeReceiver.onGameShown</c>) quita la pantalla de
+        /// carga que cubre el arranque en frío de Unity. Si no hay pantalla de carga (Unity ya estaba vivo), no hace
+        /// nada. En el Editor solo loguea.
+        /// </summary>
+        public static void NotifyGameShown()
+        {
+#if UNITY_ANDROID && !UNITY_EDITOR
+            try
+            {
+                using (var jc = new AndroidJavaClass(AndroidReceiverClass))
+                {
+                    jc.CallStatic("onGameShown");
+                }
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError("[NativeBridge] No se pudo avisar que el juego ya se ve: " + e.Message);
+            }
+#else
+            Debug.Log("[Mock Editor] NotifyGameShown");
+#endif
+        }
+
         /// <summary>Se llama al terminar la partida, con el JSON de
         /// <see cref="NeuroVida.Contracts.SequenceTelemetry"/> ya serializado.</summary>
         public static void ForwardTelemetryToPlatform(string jsonTelemetry)
