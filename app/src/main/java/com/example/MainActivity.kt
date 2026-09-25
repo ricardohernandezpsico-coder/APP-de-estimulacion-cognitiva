@@ -47,7 +47,6 @@ import com.example.games.*
 import com.example.ui.LocalAgeBand
 import com.example.ui.i18n.LocalAppLanguage
 import com.example.ui.i18n.strings
-import com.example.ui.screens.AgeBandOnboardingScreen
 import com.example.ui.screens.GamesLibraryScreen
 import com.example.ui.screens.HomeScreen
 import com.example.ui.screens.ProgressScreen
@@ -84,11 +83,12 @@ class MainActivity : ComponentActivity() {
         LocalAgeBand provides (userSettings.ageBand ?: com.example.model.AgeBand.ADULT)
       ) {
         NeuroVidaTheme(darkTheme = darkTheme) {
-          // Onboarding de edad (piloto de perfiles, 20-sep): mientras no se resuelva
-          // `ageBand`, no se monta la app normal (bottom nav, tabs, etc.) -- mismo
-          // criterio que Lumosity pidiendo un dato mínimo antes de la primera sesión.
+          // Primera experiencia (ver OnboardingScreen): mientras no se resuelva `ageBand` no se monta la app
+          // normal. Al terminar se guarda todo junto y, si eligió jugar, arranca la sesión de hoy.
           if (userSettings.ageBand == null) {
-            AgeBandOnboardingScreen(onSelected = { band -> viewModel.setAgeBand(band) })
+            com.example.ui.screens.OnboardingScreen(
+              onFinish = { name, band, goal, play -> viewModel.completeOnboarding(name, band, goal, play) }
+            )
           } else {
             NeuroVidaApp(viewModel = viewModel)
           }

@@ -356,3 +356,9 @@ Pedido de Ricardo: llevar el estilo de la app a los juegos sin que se vuelvan re
 - `ShareCard.Content` generalizado: `tier` o `achievement` + `stats` (hasta 2 cifras; `trophiesAndStreak`).
 - Botón "[Debug] Ver celebración de logro" en Ajustes (encola "Una semana").
 - Vista previa: `tools/previews/medallas_logros.py` → `docs/previews/medallas-logros.png`. Kotlin NO compilado acá.
+
+## Onboarding nuevo (25-sep)
+- `ui/screens/OnboardingScreen.kt` reemplaza a `AgeBandOnboardingScreen` (borrada). Se muestra mientras `UserSettings.ageBand == null` (usuarios existentes no lo ven). 5 pasos sobre el cielo (`CosmosBackground`), puntos de avance arriba, flecha y Atrás para volver: 1) Bienvenida: los 9 juegos como planetas de arcilla (con `GameIcon`) girando alrededor de un sol, "NeuroVida", "Empezar". 2) Nombre (opcional, campo de arcilla; vacío = se deja el que había). 3) Rango de edad (tocar elige y avanza; tags `age_band_*` se mantienen). 4) Días por semana (3/4/5/7 → `weeklyGoal`). 5) "Así funciona": camino diario de 3 juegos (~5 min, dificultad que se adapta), ligas, racha y logros; "Jugar mi primera sesión" (arranca la sesión de hoy) o "Explorar primero".
+- `NeuroVidaViewModel.completeOnboarding(name, band, weeklyGoal, startFirstSession)` guarda todo de una vez (poner `ageBand` saca del onboarding) y opcionalmente llama a `startDailySession()`.
+- Botón "[Debug] Ver el onboarding otra vez" en Ajustes (`debugRestartOnboarding()`: pone `ageBand = null`, no borra progreso).
+- Vista previa: `tools/previews/onboarding.py` → `docs/previews/onboarding.png` (pasos 1 y 5). Kotlin NO compilado acá.

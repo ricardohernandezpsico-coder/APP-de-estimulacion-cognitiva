@@ -503,6 +503,30 @@ class NeuroVidaViewModel(application: Application) : AndroidViewModel(applicatio
     }
   }
 
+  /**
+   * Fin del onboarding (primera vez): guarda nombre (si lo escribió), meta de días por semana y rango de edad
+   * de una sola vez. Poner `ageBand` es lo que saca al usuario del onboarding (ver `MainActivity`). Con
+   * [startFirstSession] arranca enseguida la sesión de hoy.
+   */
+  fun completeOnboarding(name: String, band: AgeBand, weeklyGoal: Int, startFirstSession: Boolean) {
+    viewModelScope.launch {
+      val current = userSettings.value
+      repository.updateSettings(
+        current.copy(
+          name = name.trim().ifEmpty { current.name },
+          weeklyGoal = weeklyGoal,
+          ageBand = band
+        )
+      )
+      if (startFirstSession) startDailySession()
+    }
+  }
+
+  /** Solo depuración (botón en Ajustes): vuelve a mostrar el onboarding (sin borrar partidas ni progreso). */
+  fun debugRestartOnboarding() {
+    viewModelScope.launch { repository.updateSettings(userSettings.value.copy(ageBand = null)) }
+  }
+
   fun triggerTestNotification() {
     CognitiveReminderWorker.triggerImmediateTestReminder(getApplication())
   }

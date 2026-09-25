@@ -1136,6 +1136,18 @@ fun SettingsScreen(
       Spacer(modifier = Modifier.height(12.dp))
 
       OutlinedButton(
+        onClick = { viewModel.debugRestartOnboarding() },
+        shape = RoundedCornerShape(14.dp),
+        modifier = Modifier
+          .fillMaxWidth()
+          .testTag("btn_debug_onboarding")
+      ) {
+        Text("[Debug] Ver el onboarding otra vez")
+      }
+
+      Spacer(modifier = Modifier.height(12.dp))
+
+      OutlinedButton(
         onClick = {
           com.example.bridge.UnityGameLauncher.launchSecuenciaLuminica(
             context = context,
