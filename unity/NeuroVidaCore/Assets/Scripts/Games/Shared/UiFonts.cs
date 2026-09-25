@@ -4,21 +4,23 @@ using UnityEngine.UI;
 namespace NeuroVida.Games.Shared
 {
     /// <summary>
-    /// Tipografía compartida por los juegos Unity. Usa <b>Outfit</b> (geométrica, limpia,
-    /// licencia OFL -- ver <c>Assets/Resources/Fonts/Outfit-OFL.txt</c>), cercana al estilo
-    /// de las apps de entrenamiento mental tipo Lumosity, en vez de la fuente legacy de
-    /// Unity (Arial genérica). Sin la fuente presente, cae a la legacy para no romper nada.
+    /// Tipografía compartida por los juegos Unity: <b>Fredoka</b>, la misma de la app (sello "noche + arcilla",
+    /// 25-sep; antes era Outfit). Redondeada y amable, se lee bien en números grandes y a cualquier edad.
+    /// Licencia OFL (<c>Assets/Resources/Fonts/Fredoka-OFL.txt</c>). Los .ttf son instancias estáticas
+    /// (Bold 700 y SemiBold 600) generadas de la fuente variable de la app (<c>res/font/fredoka.ttf</c>, que por
+    /// defecto es Light): el Text legacy de Unity no elige peso en fuentes variables. Sin la fuente presente,
+    /// cae a la legacy para no romper nada.
     ///
-    /// Se usa siempre la variante Bold ya diseñada como tal: NO combinar con
-    /// <c>FontStyle.Bold</c> (Unity la "engordaría" otra vez sintéticamente).
+    /// Se usa siempre la variante ya diseñada con su peso: NO combinar con <c>FontStyle.Bold</c> (Unity la
+    /// "engordaría" otra vez sintéticamente).
     /// </summary>
     public static class UiFonts
     {
         private static Font _bold;
         private static Font _regular;
 
-        public static Font Bold => _bold != null ? _bold : (_bold = Load("Fonts/Outfit-Bold"));
-        public static Font Regular => _regular != null ? _regular : (_regular = Load("Fonts/Outfit-Regular"));
+        public static Font Bold => _bold != null ? _bold : (_bold = Load("Fonts/Fredoka-Bold"));
+        public static Font Regular => _regular != null ? _regular : (_regular = Load("Fonts/Fredoka-SemiBold"));
 
         private static Font Load(string path)
         {

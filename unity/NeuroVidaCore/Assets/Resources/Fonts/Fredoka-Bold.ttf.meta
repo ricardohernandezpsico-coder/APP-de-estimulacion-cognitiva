@@ -1,5 +1,5 @@
 fileFormatVersion: 2
-guid: ed57b1dda23b26342a8ef406bfd1ef14
+guid: 127d84c2e7a843b9abc3829e9ba327b0
 TrueTypeFontImporter:
   externalObjects: {}
   serializedVersion: 4
@@ -9,7 +9,7 @@ TrueTypeFontImporter:
   characterPadding: 1
   includeFontData: 1
   fontNames:
-  - Outfit
+  - Fredoka
   fallbackFontReferences: []
   customCharacters: 
   fontRenderingMode: 0
