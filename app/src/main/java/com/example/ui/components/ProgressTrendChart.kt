@@ -353,7 +353,7 @@ fun ProgressTrendChart(
                   verticalAlignment = Alignment.CenterVertically,
                   modifier = Modifier.weight(1f)
                 ) {
-                  Text(text = game?.iconEmoji ?: "🧠", fontSize = 22.sp)
+                  GameIcon(game?.id ?: "", size = 30.dp)
                   Spacer(modifier = Modifier.width(10.dp))
                   Column {
                     Text(

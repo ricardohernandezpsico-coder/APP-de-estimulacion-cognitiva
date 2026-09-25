@@ -212,7 +212,7 @@ private fun LoadingPlanet(game: GameDefinition, angle: Float, pulse: Float) {
         size = Size(r * 0.84f, r * 0.26f)
       )
     }
-    Text(game.iconEmoji, fontSize = 54.sp, modifier = Modifier.scale(1f + 0.03f * pulse))
+    GameIcon(game.id, size = 84.dp, modifier = Modifier.scale(1f + 0.03f * pulse))
     // Delante: mitad cercana de la órbita y la luna si va por delante.
     Canvas(Modifier.fillMaxSize()) {
       drawOrbit(back = false)

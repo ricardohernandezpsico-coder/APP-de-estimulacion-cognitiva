@@ -53,7 +53,7 @@ object GameRegistry {
       title = "Parejas Ocultas",
       domain = DomainType.MEMORIA,
       subtitle = "Memoria de trabajo visual",
-      instruction = "Memoriza la posición de las figuras y encuentra todas las parejas idénticas en el menor número de intentos.",
+      instruction = "Memoriza dónde está cada figura antes de que las cartas se den vuelta y encuentra todas las parejas.",
       iconEmoji = "🃏"
     ),
     GameDefinition(
@@ -61,7 +61,7 @@ object GameRegistry {
       title = "Secuencia Lumínica",
       domain = DomainType.MEMORIA,
       subtitle = "Memoria secuencial a corto plazo",
-      instruction = "Observa con atención la secuencia de luces de colores y reprodúcela en el orden exacto.",
+      instruction = "Mira el orden en que se encienden las fichas y repítelo tocándolas en el mismo orden.",
       iconEmoji = "💡"
     ),
     GameDefinition(
@@ -69,15 +69,15 @@ object GameRegistry {
       title = "Ruta del Tesoro",
       domain = DomainType.MEMORIA,
       subtitle = "Memoria visoespacial",
-      instruction = "Memoriza dónde aparecen los tesoros en la cuadrícula antes de que se oculten y recupéralos todos.",
+      instruction = "Memoriza dónde aparecen los tesoros en el mapa y encuéntralos todos cuando se escondan.",
       iconEmoji = "💎"
     ),
     GameDefinition(
       id = "stroop",
-      title = "Color o Palabra",
+      title = "Tinta o Palabra",
       domain = DomainType.ATENCION,
       subtitle = "Efecto Stroop & Inhibición",
-      instruction = "Elige el COLOR con el que está escrita la palabra, ignorando lo que dice el texto.",
+      instruction = "Responde según la regla del cartel: el color de la TINTA o lo que dice la PALABRA. Atento: la regla cambia.",
       iconEmoji = "🎨"
     ),
     GameDefinition(
@@ -85,7 +85,7 @@ object GameRegistry {
       title = "Cambio de Chip",
       domain = DomainType.ATENCION,
       subtitle = "Flexibilidad cognitiva",
-      instruction = "Atiende a la regla activa en cada momento: responde según hacia dónde apunta la flecha o según en qué cuadrante está situada.",
+      instruction = "Sigue la regla del cartel: responde hacia dónde apunta la flecha (DIRECCIÓN) o en qué borde está (POSICIÓN).",
       iconEmoji = "🔄"
     ),
     GameDefinition(
@@ -93,7 +93,7 @@ object GameRegistry {
       title = "Detective de Series",
       domain = DomainType.RAZONAMIENTO,
       subtitle = "Lógica secuencial",
-      instruction = "Descifra la regla matemática o geométrica que gobierna la serie y selecciona la opción que continúa la secuencia.",
+      instruction = "Descubre la regla que siguen los números y elige el que continúa la serie.",
       iconEmoji = "🔍"
     ),
     GameDefinition(
@@ -101,7 +101,7 @@ object GameRegistry {
       title = "Anagramas",
       domain = DomainType.LENGUAJE,
       subtitle = "Léxico y procesamiento fonológico",
-      instruction = "Descubre la palabra escondida reordenando las letras desordenadas. ¡Puedes pedir una pista si la necesitas!",
+      instruction = "Ordena las letras para formar la palabra escondida. Si te trabas, puedes pedir una pista.",
       iconEmoji = "🔤"
     ),
     GameDefinition(
@@ -109,7 +109,7 @@ object GameRegistry {
       title = "Cálculo Sereno",
       domain = DomainType.CALCULO,
       subtitle = "Aritmética mental",
-      instruction = "Resuelve las operaciones matemáticas con precisión y mantén tu racha de aciertos.",
+      instruction = "Resuelve cada cuenta y toca el resultado. En modo Reto, antes de que la burbuja llegue al agua.",
       iconEmoji = "🧮"
     ),
     GameDefinition(
@@ -117,7 +117,7 @@ object GameRegistry {
       title = "Comparación Instantánea",
       domain = DomainType.VELOCIDAD,
       subtitle = "Velocidad perceptiva",
-      instruction = "Determina al instante cuál de los dos paneles contiene mayor cantidad o un valor numérico superior.",
+      instruction = "Elige la tarjeta que vale más: la de más puntos, el número mayor o la cuenta con mayor resultado.",
       iconEmoji = "⚡"
     )
   )

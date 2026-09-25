@@ -326,3 +326,10 @@ Pedido de Ricardo: llevar el estilo de la app a los juegos sin que se vuelvan re
 - Fondo de ventana de la app = `@color/nv_night` (y `windowSplashScreenBackground` en Android 12+): sin destello de otro color al abrir.
 - Vista previa: `tools/previews/pantalla_carga.py` → `docs/previews/pantalla-carga.png`.
 - Marca: `estilo 25-sep · d`. C# verificado con `tools/unity-compile-check`; Kotlin NO compilado acá. Probar: cerrar la app desde Recientes → abrir → jugar (primera partida: debe verse la pantalla de carga en vez de negro/indicador hasta la cuenta regresiva); segunda partida (rápida, casi no se ve).
+- Probado por Ricardo en el teléfono (25-sep): funciona como se describe.
+
+## Íconos propios de los juegos (25-sep)
+- `ui/components/GameIcon.kt` (`GameIcon(gameId, size)`): 9 íconos dibujados por código en arcilla (relleno plano, borde tinta, sombra dura, brillo) en un lienzo de 100x100 unidades, en vez de emojis (cambian según el fabricante y no dicen nada de la mecánica). Secuencia = 4 fichas con una encendida · Parejas = carta boca abajo + carta dada vuelta · Ruta del Tesoro = estrella de mar · Tinta o Palabra = gota de tinta + tarjeta con palabra · Cambio de Chip = ficha con flecha + flechas de cambio · Series = lupa sobre puntos que crecen · Anagramas = fichas A/Z · Cálculo = + − × = · Comparación = círculo grande > chico. Id desconocido → emoji de `iconEmoji` (se conserva el campo).
+- Usado en: planetas de la biblioteca, diálogo de inicio del juego, historial (`ProgressTrendChart`) y pantalla de carga. Los desafíos semanales siguen con emoji.
+- `GameRegistry`: Stroop se llama "Tinta o Palabra" (como en Unity) e instrucciones reescritas para describir los juegos de Unity actuales (se leen en la pantalla de carga).
+- Vista previa: `tools/previews/iconos_juegos.py` → `docs/previews/iconos-juegos.png` (si se cambia `GameIcon.kt`, actualizar la réplica). Kotlin NO compilado acá.

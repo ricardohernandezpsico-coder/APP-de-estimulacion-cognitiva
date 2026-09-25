@@ -192,7 +192,7 @@ fun GamesLibraryScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            Text(text = game.iconEmoji, fontSize = 48.sp)
+            com.example.ui.components.GameIcon(game.id, size = 72.dp)
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
@@ -402,7 +402,7 @@ private fun Planet(
             .clip(RoundedCornerShape(50))
             .background(Color.White.copy(alpha = 0.32f))
         )
-        Text(game.iconEmoji, fontSize = 34.sp)
+        com.example.ui.components.GameIcon(game.id, size = 56.dp)
       }
     }
     Text(
