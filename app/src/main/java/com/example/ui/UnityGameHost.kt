@@ -75,7 +75,8 @@ fun UnityGameHost(
         baseIntensity = session.intensity,
         timed = session.timed,
         ageBand = ageBand,
-        soundEnabled = soundEnabled
+        soundEnabled = soundEnabled,
+        launchId = session.resumeLaunchId
       )
     )
     onLaunched()

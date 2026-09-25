@@ -67,12 +67,12 @@ namespace NeuroVida.Games.Shared
             float t = 0f;
             const float delay = 0.6f; // aparece después de que el panel de resultado termina de animar
             _rect.localScale = Vector3.zero;
-            while (t < delay) { t += Time.unscaledDeltaTime; yield return null; }
+            while (t < delay) { t += GameClock.DeltaTime; yield return null; }
             t = 0f;
             const float seconds = 0.3f;
             while (t < seconds)
             {
-                t += Time.unscaledDeltaTime;
+                t += GameClock.DeltaTime;
                 _rect.localScale = Vector3.one * Mathf.LerpUnclamped(0f, 1f, UiFx.EaseOutBack(Mathf.Clamp01(t / seconds)));
                 yield return null;
             }

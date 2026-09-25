@@ -163,10 +163,10 @@ namespace NeuroVida.Games.RutaTesoro
                 RevealGem(order[i], i);
                 yield return new WaitForSeconds(stagger);
             }
-            float shownAt = Time.unscaledTime;
-            while (Time.unscaledTime - shownAt < showMs / 1000f)
+            float shownAt = GameClock.Time;
+            while (GameClock.Time - shownAt < showMs / 1000f)
             {
-                SetTimerFraction(1f - (Time.unscaledTime - shownAt) / (showMs / 1000f), RevealColor);
+                SetTimerFraction(1f - (GameClock.Time - shownAt) / (showMs / 1000f), RevealColor);
                 yield return null;
             }
 
@@ -174,7 +174,7 @@ namespace NeuroVida.Games.RutaTesoro
             PlayTone(330f, 0.18f, 0.14f);
             yield return StartCoroutine(HideGems(order));
             _pill.Set("Ahora encuéntralos", TealAccent);
-            _roundStartedAt = Time.unscaledTime;
+            _roundStartedAt = GameClock.Time;
             _acceptInput = true;
             float findSeconds = TreasureContract.FindSeconds(_stage);
             SetTimerVisible(Timed, TealAccent);
@@ -183,7 +183,7 @@ namespace NeuroVida.Games.RutaTesoro
             {
                 if (Timed)
                 {
-                    float left = 1f - (Time.unscaledTime - _roundStartedAt) / findSeconds;
+                    float left = 1f - (GameClock.Time - _roundStartedAt) / findSeconds;
                     SetTimerFraction(left, left > 0.35f ? TealAccent : (left > 0.15f ? AmberColor : BadColor));
                     if (left <= 0f) _result = RoundResult.TimedOut;
                 }
@@ -239,7 +239,7 @@ namespace NeuroVida.Games.RutaTesoro
                 tile.State = TileState.Found;
                 _found++;
                 _treasuresFoundTotal++;
-                _findMsSum += (long)((Time.unscaledTime - _roundStartedAt) * 1000f / _found);
+                _findMsSum += (long)((GameClock.Time - _roundStartedAt) * 1000f / _found);
                 _findCount++;
                 _dots.Mark(_found - 1, true);
                 UpdateHud(TreasureContract.StageFor(_stage));
@@ -287,7 +287,7 @@ namespace NeuroVida.Games.RutaTesoro
             const float seconds = 0.28f;
             while (t < seconds)
             {
-                t += Time.unscaledDeltaTime;
+                t += GameClock.DeltaTime;
                 r.localScale = Vector3.one * Mathf.LerpUnclamped(0.2f, 1f, UiFx.EaseOutBack(Mathf.Clamp01(t / seconds)));
                 yield return null;
             }
@@ -301,7 +301,7 @@ namespace NeuroVida.Games.RutaTesoro
             const float seconds = 0.22f;
             while (t < seconds)
             {
-                t += Time.unscaledDeltaTime;
+                t += GameClock.DeltaTime;
                 float k = Mathf.Clamp01(t / seconds);
                 foreach (int i in order)
                 {
@@ -341,7 +341,7 @@ namespace NeuroVida.Games.RutaTesoro
             float t = 0f;
             while (t < total + 0.3f)
             {
-                t += Time.unscaledDeltaTime;
+                t += GameClock.DeltaTime;
                 for (int i = 0; i < _tiles.Count; i++)
                 {
                     int r = i / n, c = i % n;
@@ -371,7 +371,7 @@ namespace NeuroVida.Games.RutaTesoro
             foreach (var tile in _tiles) tile.Rect.localScale = Vector3.zero;
             while (t < total + 0.3f)
             {
-                t += Time.unscaledDeltaTime;
+                t += GameClock.DeltaTime;
                 for (int i = 0; i < _tiles.Count; i++)
                 {
                     int r = i / n, c = i % n;
@@ -390,7 +390,7 @@ namespace NeuroVida.Games.RutaTesoro
             const float seconds = 0.25f;
             while (t < seconds)
             {
-                t += Time.unscaledDeltaTime;
+                t += GameClock.DeltaTime;
                 float k = UiFx.EaseOutCubic(Mathf.Clamp01(t / seconds));
                 foreach (var tile in _tiles) tile.Rect.localScale = Vector3.one * (1f - k);
                 yield return null;

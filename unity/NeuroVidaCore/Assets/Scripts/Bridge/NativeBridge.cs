@@ -19,6 +19,10 @@ namespace NeuroVida.Bridge
     {
         private const string AndroidReceiverClass = "com.example.bridge.NativeReceiver";
 
+        /// <summary>La partida en curso ya terminó (se envió su resultado). Lo reinicia el lector del Intent al
+        /// arrancar cada partida; lo usa el Atrás de <c>GameEntryPoint</c> (terminada = volver; en curso = pausa).</summary>
+        public static bool GameFinished;
+
         // Bug real encontrado compilando el build Android (22-sep): un [DllImport]
         // extern SIN guardia de plataforma genera igual el símbolo nativo en IL2CPP,
         // aunque el método nunca se llame en ese branch -- el linker de Android fallaba
@@ -46,7 +50,7 @@ namespace NeuroVida.Bridge
             {
                 using (var jc = new AndroidJavaClass(AndroidReceiverClass))
                 {
-                    returned = jc.CallStatic<bool>("returnToApp");
+                    returned = jc.CallStatic<bool>("returnToApp", false);
                 }
             }
             catch (System.Exception e)
@@ -78,10 +82,37 @@ namespace NeuroVida.Bridge
 #endif
         }
 
+        /// <summary>
+        /// "Salir" desde el menú de pausa: vuelve a la app con la partida EN PAUSA (Unity no recarga nada). Si luego
+        /// se abre el mismo juego, la app reusa el mismo id de lanzamiento y la partida sigue donde quedó.
+        /// Devuelve false si no pudo (Editor u otra plataforma).
+        /// </summary>
+        public static bool ReturnToAppPaused()
+        {
+#if UNITY_ANDROID && !UNITY_EDITOR
+            try
+            {
+                using (var jc = new AndroidJavaClass(AndroidReceiverClass))
+                {
+                    return jc.CallStatic<bool>("returnToApp", true);
+                }
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError("[NativeBridge] No se pudo volver a la app con la partida en pausa: " + e.Message);
+                return false;
+            }
+#else
+            Debug.Log("[Mock Editor] ReturnToAppPaused");
+            return false;
+#endif
+        }
+
         /// <summary>Se llama al terminar la partida, con el JSON de
         /// <see cref="NeuroVida.Contracts.SequenceTelemetry"/> ya serializado.</summary>
         public static void ForwardTelemetryToPlatform(string jsonTelemetry)
         {
+            GameFinished = true;
 #if UNITY_ANDROID && !UNITY_EDITOR
             using (var jc = new AndroidJavaClass(AndroidReceiverClass))
             {

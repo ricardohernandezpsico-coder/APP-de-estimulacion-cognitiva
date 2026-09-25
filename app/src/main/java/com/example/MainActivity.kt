@@ -105,7 +105,8 @@ class MainActivity : ComponentActivity() {
     intent.removeExtra(NativeReceiver.EXTRA_RETURN_FROM_GAME)
     viewModel.onReturnedFromGame(
       launchId = intent.getStringExtra(UnityGameLauncher.EXTRA_LAUNCH_ID),
-      resultJson = intent.getStringExtra(NativeReceiver.EXTRA_JSON)
+      resultJson = intent.getStringExtra(NativeReceiver.EXTRA_JSON),
+      paused = intent.getBooleanExtra(NativeReceiver.EXTRA_PAUSED, false)
     )
   }
 }

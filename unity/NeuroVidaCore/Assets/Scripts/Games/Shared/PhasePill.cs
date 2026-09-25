@@ -112,7 +112,7 @@ namespace NeuroVida.Games.Shared
             float elapsed = 0f;
             while (elapsed < seconds)
             {
-                elapsed += Time.unscaledDeltaTime;
+                elapsed += GameClock.DeltaTime;
                 float t = Mathf.Clamp01(elapsed / seconds);
                 _rect.localScale = Vector3.one * Mathf.LerpUnclamped(0.82f, 1f, UiFx.EaseOutBack(t));
                 yield return null;

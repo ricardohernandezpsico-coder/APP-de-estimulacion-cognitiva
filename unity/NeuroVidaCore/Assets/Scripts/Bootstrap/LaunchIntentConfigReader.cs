@@ -35,6 +35,15 @@ namespace NeuroVida.Bridge
 
         private void Start() => TryStart();
 
+        /// <summary>"Reiniciar" del menú de pausa: la misma partida (mismo Intent) desde cero, en una escena limpia.</summary>
+        public static void RestartCurrentGame()
+        {
+            s_startedLaunchId = null;
+            NeuroVida.Games.Shared.GameClock.Reset();
+            UnityEngine.SceneManagement.SceneManager.LoadScene(
+                UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex);
+        }
+
         // Unity vuelve al frente con el Intent de la partida nueva (FLAG_ACTIVITY_REORDER_TO_FRONT): la Activity
         // actualiza getIntent() en onNewIntent y acá se detecta por el cambio de id.
         private void OnApplicationFocus(bool hasFocus)
@@ -92,6 +101,7 @@ namespace NeuroVida.Bridge
             }
             s_startedLaunchId = launchId;
             _startedHere = true;
+            NativeBridge.GameFinished = false;
             gameEntryPoint.InitializeGameConfig(json);
 #endif
         }

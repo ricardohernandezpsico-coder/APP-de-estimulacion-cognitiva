@@ -117,7 +117,7 @@ namespace NeuroVida.Games.Shared
             float elapsed = 0f;
             while (elapsed < inSeconds)
             {
-                elapsed += Time.unscaledDeltaTime;
+                elapsed += GameClock.DeltaTime;
                 float t = Mathf.Clamp01(elapsed / inSeconds);
                 _group.alpha = Mathf.Clamp01(t * 1.6f);
                 _rect.anchoredPosition = _basePosition + new Vector2(0f, (1f - UiFx.EaseOutBack(t)) * drop);
@@ -131,7 +131,7 @@ namespace NeuroVida.Games.Shared
             elapsed = 0f;
             while (elapsed < outSeconds)
             {
-                elapsed += Time.unscaledDeltaTime;
+                elapsed += GameClock.DeltaTime;
                 float t = Mathf.Clamp01(elapsed / outSeconds);
                 _group.alpha = 1f - t;
                 _rect.anchoredPosition = _basePosition + new Vector2(0f, t * drop * 0.6f);

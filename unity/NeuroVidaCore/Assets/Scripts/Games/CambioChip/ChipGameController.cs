@@ -124,13 +124,13 @@ namespace NeuroVida.Games.CambioChip
             Canvas.ForceUpdateCanvases();
             Layout();
 
-            _roundEndsAt = Time.unscaledTime + ChipContract.EndlessSeconds;
+            _roundEndsAt = GameClock.Time + ChipContract.EndlessSeconds;
             _trialIndex = 0;
-            while (Endless ? Time.unscaledTime < _roundEndsAt : _trialIndex < ChipContract.TotalTrials)
+            while (Endless ? GameClock.Time < _roundEndsAt : _trialIndex < ChipContract.TotalTrials)
             {
                 yield return StartCoroutine(PresentTrial());
 
-                float startedAt = Time.unscaledTime;
+                float startedAt = GameClock.Time;
                 while (_answer == NoAnswer)
                 {
                     if (Endless && UpdateRoundClock()) _answer = TimeUp;
@@ -207,7 +207,7 @@ namespace NeuroVida.Games.CambioChip
             const float seconds = 0.2f;
             while (t < seconds)
             {
-                t += Time.unscaledDeltaTime;
+                t += GameClock.DeltaTime;
                 float k = Mathf.Clamp01(t / seconds);
                 _chipRect.localScale = Vector3.one * Mathf.LerpUnclamped(0f, 1f, UiFx.EaseOutBack(k));
                 _chipGroup.alpha = Mathf.Clamp01(k * 3f);
@@ -231,7 +231,7 @@ namespace NeuroVida.Games.CambioChip
                 const float seconds = 0.22f;
                 while (t < seconds)
                 {
-                    t += Time.unscaledDeltaTime;
+                    t += GameClock.DeltaTime;
                     float k = Mathf.Clamp01(t / seconds);
                     float pulse = Mathf.Sin(k * Mathf.PI);
                     _arenaBorder.color = Color.Lerp(new Color(accent.r, accent.g, accent.b, 0.95f), Color.white, pulse * 0.85f);
@@ -272,7 +272,7 @@ namespace NeuroVida.Games.CambioChip
                 Vector2 dir = Vector(_trial.Correct == _trial.Position ? _trial.Position : _trial.Pointing);
                 while (t < seconds)
                 {
-                    t += Time.unscaledDeltaTime;
+                    t += GameClock.DeltaTime;
                     float k = UiFx.EaseOutCubic(Mathf.Clamp01(t / seconds));
                     _chipRect.anchoredPosition = from + dir * (_arenaSize * 0.35f * k);
                     _chipRect.localScale = Vector3.one * (1f + 0.15f * k);
@@ -300,7 +300,7 @@ namespace NeuroVida.Games.CambioChip
                 const float seconds = 0.16f;
                 while (t < seconds)
                 {
-                    t += Time.unscaledDeltaTime;
+                    t += GameClock.DeltaTime;
                     _chipGroup.alpha = 1f - Mathf.Clamp01(t / seconds);
                     yield return null;
                 }
@@ -315,7 +315,7 @@ namespace NeuroVida.Games.CambioChip
             float from = _chipGroup.alpha;
             while (t < seconds)
             {
-                t += Time.unscaledDeltaTime;
+                t += GameClock.DeltaTime;
                 _chipGroup.alpha = from * (1f - Mathf.Clamp01(t / seconds));
                 yield return null;
             }
@@ -324,7 +324,7 @@ namespace NeuroVida.Games.CambioChip
 
         private bool UpdateRoundClock()
         {
-            float left = _roundEndsAt - Time.unscaledTime;
+            float left = _roundEndsAt - GameClock.Time;
             SetTimerFraction(Mathf.Clamp01(left / ChipContract.EndlessSeconds));
             int whole = Mathf.CeilToInt(left);
             if (whole <= 5 && whole >= 1 && whole != _lastTickSecond)
@@ -370,7 +370,7 @@ namespace NeuroVida.Games.CambioChip
         {
             if (!_acceptInput || _ended) return;
             _acceptInput = false;
-            _answerAt = Time.unscaledTime;
+            _answerAt = GameClock.Time;
             _answer = index;
         }
 
@@ -427,7 +427,7 @@ namespace NeuroVida.Games.CambioChip
             const float half = 0.11f;
             while (t < half)
             {
-                t += Time.unscaledDeltaTime;
+                t += GameClock.DeltaTime;
                 _bannerRect.localScale = new Vector3(1f - Mathf.Clamp01(t / half), 1f, 1f);
                 yield return null;
             }
@@ -436,7 +436,7 @@ namespace NeuroVida.Games.CambioChip
             const float back = 0.2f;
             while (t < back)
             {
-                t += Time.unscaledDeltaTime;
+                t += GameClock.DeltaTime;
                 _bannerRect.localScale = new Vector3(Mathf.LerpUnclamped(0f, 1f, UiFx.EaseOutBack(Mathf.Clamp01(t / back))), 1f, 1f);
                 yield return null;
             }

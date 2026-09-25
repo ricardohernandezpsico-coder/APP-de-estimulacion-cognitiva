@@ -129,13 +129,13 @@ namespace NeuroVida.Games.Series
             Canvas.ForceUpdateCanvases();
             Layout();
 
-            _roundEndsAt = Time.unscaledTime + SeriesContract.EndlessSeconds;
+            _roundEndsAt = GameClock.Time + SeriesContract.EndlessSeconds;
             _trialIndex = 0;
-            while (Endless ? Time.unscaledTime < _roundEndsAt : _trialIndex < SeriesContract.TotalTrials)
+            while (Endless ? GameClock.Time < _roundEndsAt : _trialIndex < SeriesContract.TotalTrials)
             {
                 yield return StartCoroutine(PresentSeries());
 
-                float startedAt = Time.unscaledTime;
+                float startedAt = GameClock.Time;
                 while (_answerIndex == NoAnswer)
                 {
                     if (Endless && UpdateRoundClock()) _answerIndex = TimeUp;
@@ -228,7 +228,7 @@ namespace NeuroVida.Games.Series
             // Aro que late alrededor de la ficha "?" mientras no se responda.
             while (_answerIndex == NoAnswer && !_ended)
             {
-                float t = Mathf.PingPong(Time.unscaledTime * 1.6f, 1f);
+                float t = Mathf.PingPong(GameClock.Time * 1.6f, 1f);
                 _lensRing.color = new Color(LensColor.r, LensColor.g, LensColor.b, 0.25f + 0.55f * t);
                 _lensRing.rectTransform.localScale = Vector3.one * (1.02f + 0.10f * t);
                 yield return null;
@@ -323,7 +323,7 @@ namespace NeuroVida.Games.Series
             var optionScales = new Vector3[4];
             while (t < seconds)
             {
-                t += Time.unscaledDeltaTime;
+                t += GameClock.DeltaTime;
                 float k = UiFx.EaseOutCubic(Mathf.Clamp01(t / seconds));
                 _rowRect.anchoredPosition = _rowRest + new Vector2(-220f * k, 0f);
                 foreach (var tok in _tokens)
@@ -339,7 +339,7 @@ namespace NeuroVida.Games.Series
 
         private bool UpdateRoundClock()
         {
-            float left = _roundEndsAt - Time.unscaledTime;
+            float left = _roundEndsAt - GameClock.Time;
             float f = Mathf.Clamp01(left / SeriesContract.EndlessSeconds);
             _timerFill.anchorMax = new Vector2(f, 1f);
             _timerFill.offsetMin = _timerFill.offsetMax = Vector2.zero;
@@ -387,7 +387,7 @@ namespace NeuroVida.Games.Series
         {
             if (!_acceptInput || _ended) return;
             _acceptInput = false;
-            _answerAt = Time.unscaledTime;
+            _answerAt = GameClock.Time;
             _answerIndex = index;
         }
 

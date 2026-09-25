@@ -110,6 +110,9 @@ object NativeReceiver {
   /** Extra del Intent de vuelta a la app: la pantalla de juego (Unity) se ocultó y la app vuelve al frente. */
   const val EXTRA_RETURN_FROM_GAME = "neurovida_return_from_game"
 
+  /** Extra del Intent de vuelta: la partida quedó EN PAUSA ("Salir" del menú de pausa), no terminó ni se abandonó. */
+  const val EXTRA_PAUSED = "neurovida_game_paused"
+
   /** Resultado de la partida en curso, guardado en el proceso de Unity hasta que el usuario vuelve a la app. */
   @Volatile private var pendingResultJson: String? = null
   @Volatile private var pendingLaunchId: String? = null
@@ -141,20 +144,26 @@ object NativeReceiver {
    * "Continuar" o Atrás en Unity (proceso `:unity`): trae la app al frente SIN cerrar Unity, que queda en pausa
    * detrás. Así la próxima partida no arranca el motor desde cero (eran 5-8 s por juego). El Intent lleva el
    * resultado si la partida terminó, para que la app lo muestre al instante sin esperar al broadcast.
+   * Con [paused] la partida queda en pausa dentro de Unity (menú de pausa, "Salir"): la app la recuerda y, si se
+   * vuelve a abrir ese juego, la retoma con el mismo id de lanzamiento.
    * Devuelve false si no pudo (Unity usa entonces el camino viejo: cerrar su Activity).
    */
   @JvmStatic
-  fun returnToApp(): Boolean {
+  @JvmOverloads
+  fun returnToApp(paused: Boolean = false): Boolean {
     val activity = UnityPlayer.currentActivity ?: return false
     val launchId = currentLaunchId()
     val intent = Intent(activity, MainActivity::class.java)
       .addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
       .putExtra(EXTRA_RETURN_FROM_GAME, true)
       .putExtra(UnityGameLauncher.EXTRA_LAUNCH_ID, launchId)
-    val json = pendingResultJson
-    if (json != null && pendingLaunchId == launchId) intent.putExtra(EXTRA_JSON, json)
-    pendingResultJson = null
-    pendingLaunchId = null
+      .putExtra(EXTRA_PAUSED, paused)
+    if (!paused) {
+      val json = pendingResultJson
+      if (json != null && pendingLaunchId == launchId) intent.putExtra(EXTRA_JSON, json)
+      pendingResultJson = null
+      pendingLaunchId = null
+    }
     activity.runOnUiThread { activity.startActivity(intent) }
     return true
   }

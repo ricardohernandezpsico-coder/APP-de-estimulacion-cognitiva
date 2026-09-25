@@ -89,7 +89,7 @@ namespace NeuroVida.Games.Shared
             while (t < seconds)
             {
                 if (rect == null) yield break;
-                t += Time.unscaledDeltaTime;
+                t += GameClock.DeltaTime;
                 rect.localScale = Vector3.one * Mathf.Lerp(peak, 1f, UiFx.EaseOutCubic(Mathf.Clamp01(t / seconds)));
                 yield return null;
             }
@@ -104,7 +104,7 @@ namespace NeuroVida.Games.Shared
             while (t < seconds)
             {
                 if (rect == null) yield break;
-                t += Time.unscaledDeltaTime;
+                t += GameClock.DeltaTime;
                 rect.localScale = Vector3.one * Mathf.LerpUnclamped(0f, 1f, UiFx.EaseOutBack(Mathf.Clamp01(t / seconds)));
                 yield return null;
             }

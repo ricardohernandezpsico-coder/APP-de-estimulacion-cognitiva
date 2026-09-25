@@ -74,7 +74,7 @@ namespace NeuroVida.Games.Shared
             float t = 0f;
             while (t < seconds)
             {
-                t += Time.unscaledDeltaTime;
+                t += GameClock.DeltaTime;
                 float k = Mathf.Clamp01(t / seconds);
                 _flash.color = new Color(color.r, color.g, color.b, maxAlpha * (1f - k));
                 yield return null;
@@ -90,7 +90,7 @@ namespace NeuroVida.Games.Shared
             const float seconds = 0.9f;
             while (t < seconds)
             {
-                t += Time.unscaledDeltaTime;
+                t += GameClock.DeltaTime;
                 float k = Mathf.Clamp01(t / seconds);
                 _resultRoot.localScale = Vector3.one * Mathf.LerpUnclamped(0.7f, 1f, UiFx.EaseOutBack(Mathf.Clamp01(k * 2f)));
                 scoreText.text = Mathf.RoundToInt(score * UiFx.EaseOutCubic(k)).ToString();

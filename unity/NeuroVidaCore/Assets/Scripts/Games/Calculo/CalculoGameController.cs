@@ -118,26 +118,26 @@ namespace NeuroVida.Games.Calculo
             Canvas.ForceUpdateCanvases();
             Layout();
 
-            _roundEndsAt = Time.unscaledTime + CalculoContract.EndlessSeconds;
+            _roundEndsAt = GameClock.Time + CalculoContract.EndlessSeconds;
             _trialIndex = 0;
-            while (Endless ? Time.unscaledTime < _roundEndsAt : _trialIndex < CalculoContract.TotalTrials)
+            while (Endless ? GameClock.Time < _roundEndsAt : _trialIndex < CalculoContract.TotalTrials)
             {
                 yield return StartCoroutine(PresentQuestion());
 
-                float startedAt = Time.unscaledTime;
+                float startedAt = GameClock.Time;
                 float fall = CalculoContract.FallSeconds(_effLevel, _config.config.base_intensity);
                 float lastWarn = 0f;
                 while (_answerIndex == NoAnswer)
                 {
-                    float t = Time.unscaledTime - startedAt;
+                    float t = GameClock.Time - startedAt;
                     if (Endless)
                     {
                         if (UpdateRoundClock()) { _answerIndex = TimeUp; break; }
                         float progress = Mathf.Clamp01(t / fall);
                         SetBubble(progress);
-                        if (progress > 0.72f && Time.unscaledTime - lastWarn > 0.7f)
+                        if (progress > 0.72f && GameClock.Time - lastWarn > 0.7f)
                         {
-                            lastWarn = Time.unscaledTime;
+                            lastWarn = GameClock.Time;
                             PlayTone(660f, 0.06f, 0.07f);
                         }
                         if (progress >= 1f) { _answerIndex = Splashed; break; }
@@ -145,7 +145,7 @@ namespace NeuroVida.Games.Calculo
                     else
                     {
                         // Sin reloj: la burbuja flota suavemente en su sitio.
-                        _bubbleRect.anchoredPosition = new Vector2(0f, _bubbleRestY + Mathf.Sin(Time.unscaledTime * 1.6f) * 10f);
+                        _bubbleRect.anchoredPosition = new Vector2(0f, _bubbleRestY + Mathf.Sin(GameClock.Time * 1.6f) * 10f);
                     }
                     yield return null;
                 }
@@ -205,7 +205,7 @@ namespace NeuroVida.Games.Calculo
             const float seconds = 0.26f;
             while (t < seconds)
             {
-                t += Time.unscaledDeltaTime;
+                t += GameClock.DeltaTime;
                 float k = Mathf.Clamp01(t / seconds);
                 _bubbleRect.localScale = Vector3.one * Mathf.LerpUnclamped(0.5f, 1f, UiFx.EaseOutBack(k));
                 _bubbleGroup.alpha = Mathf.Clamp01(k * 2.5f);
@@ -310,7 +310,7 @@ namespace NeuroVida.Games.Calculo
             float t = 0f;
             while (t < seconds)
             {
-                t += Time.unscaledDeltaTime;
+                t += GameClock.DeltaTime;
                 float k = UiFx.EaseOutCubic(Mathf.Clamp01(t / seconds));
                 _bubbleRect.anchoredPosition = new Vector2(0f, Mathf.Lerp(from.y, targetY, k));
                 _bubbleRect.localScale = Vector3.one * (1f - 0.25f * k);
@@ -332,7 +332,7 @@ namespace NeuroVida.Games.Calculo
             float from = _bubbleGroup.alpha;
             while (t < seconds)
             {
-                t += Time.unscaledDeltaTime;
+                t += GameClock.DeltaTime;
                 _bubbleGroup.alpha = from * (1f - Mathf.Clamp01(t / seconds));
                 yield return null;
             }
@@ -356,7 +356,7 @@ namespace NeuroVida.Games.Calculo
 
         private bool UpdateRoundClock()
         {
-            float left = _roundEndsAt - Time.unscaledTime;
+            float left = _roundEndsAt - GameClock.Time;
             float f = Mathf.Clamp01(left / CalculoContract.EndlessSeconds);
             _timerFill.anchorMax = new Vector2(f, 1f);
             _timerFill.offsetMin = _timerFill.offsetMax = Vector2.zero;
@@ -404,7 +404,7 @@ namespace NeuroVida.Games.Calculo
         {
             if (!_acceptInput || _ended) return;
             _acceptInput = false;
-            _answerAt = Time.unscaledTime;
+            _answerAt = GameClock.Time;
             _answerIndex = index;
         }
 
@@ -415,7 +415,7 @@ namespace NeuroVida.Games.Calculo
             // Dos ondas lentas de luz que se cruzan sobre el estanque.
             while (true)
             {
-                float t = Time.unscaledTime;
+                float t = GameClock.Time;
                 if (_waveA != null) _waveA.anchoredPosition = new Vector2(Mathf.Sin(t * 0.5f) * 160f, _waveA.anchoredPosition.y);
                 if (_waveB != null) _waveB.anchoredPosition = new Vector2(Mathf.Sin(t * 0.37f + 2f) * -200f, _waveB.anchoredPosition.y);
                 yield return null;

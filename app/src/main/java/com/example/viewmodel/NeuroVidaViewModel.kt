@@ -33,7 +33,9 @@ data class ActiveGameSession(
   val timed: Boolean,
   val isDailyFlow: Boolean = false,
   // Progresión sin techo más allá de nivel 5 (Experto) — ver GameProgressEntity.masteryStreak.
-  val intensity: Int = 0
+  val intensity: Int = 0,
+  // Partida en pausa que se retoma: se relanza Unity con este id de lanzamiento y la partida sigue donde quedó.
+  val resumeLaunchId: String? = null
 )
 
 data class DomainStats(
@@ -192,6 +194,18 @@ class NeuroVidaViewModel(application: Application) : AndroidViewModel(applicatio
   }
 
   fun launchGame(gameId: String, customLevel: Int? = null, customTimed: Boolean? = null, isDailyFlow: Boolean = false) {
+    // Si ese juego quedó en pausa ("Salir" del menú de pausa), se retoma en vez de empezar de cero. "Jugar de
+    // nuevo" (customLevel) siempre es una partida nueva. Abrir otro juego descarta la pausa (Unity recarga).
+    val paused = pausedGame
+    pausedGame = null
+    if (paused != null && paused.first.gameDef.id == gameId && customLevel == null) {
+      _activeGame.value = paused.first.copy(
+        isDailyFlow = isDailyFlow || paused.first.isDailyFlow,
+        resumeLaunchId = paused.second
+      )
+      _lastResult.value = null
+      return
+    }
     val def = GameRegistry.getById(gameId) ?: return
     val lvl = customLevel ?: getEffectiveLevelForGame(gameId)
     val timed = customTimed ?: userSettings.value.defaultTimed
@@ -220,6 +234,9 @@ class NeuroVidaViewModel(application: Application) : AndroidViewModel(applicatio
   /** true entre que se lanza Unity y que vuelve la app (ver [onReturnedFromGame] / [onHostResumed]). */
   private var awaitingUnityReturn = false
 
+  /** Partida que quedó en pausa dentro de Unity (sesión + id de lanzamiento), para retomarla en [launchGame]. */
+  private var pausedGame: Pair<ActiveGameSession, String>? = null
+
   /** `UnityGameHost` acaba de traer al frente la pantalla de juego (Unity). */
   fun onUnityLaunched() {
     awaitingUnityReturn = true
@@ -231,8 +248,15 @@ class NeuroVidaViewModel(application: Application) : AndroidViewModel(applicatio
    * broadcast de respaldo; [com.example.bridge.UnityResultInbox] evita procesarlo dos veces). Sin resultado =
    * salió a mitad de partida: se cierra la sesión.
    */
-  fun onReturnedFromGame(launchId: String?, resultJson: String?) {
+  fun onReturnedFromGame(launchId: String?, resultJson: String?, paused: Boolean = false) {
     awaitingUnityReturn = false
+    if (paused) {
+      // "Salir" del menú de pausa: la partida sigue viva (en pausa) en Unity; se vuelve al menú de la app.
+      val session = _activeGame.value
+      if (session != null && launchId != null) pausedGame = session to launchId
+      _activeGame.value = null
+      return
+    }
     if (resultJson != null) {
       if (com.example.bridge.UnityResultInbox.claim(launchId)) {
         val result = com.example.bridge.NativeReceiver.parse(resultJson)

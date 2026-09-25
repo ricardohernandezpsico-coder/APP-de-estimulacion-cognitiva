@@ -309,3 +309,12 @@ Pedido de Ricardo: llevar el estilo de la app a los juegos sin que se vuelvan re
 - `MainActivity`: la pestaña (Hoy/Juegos/...) ya no se compone mientras hay un juego o un resultado encima (con el fondo transparente se veía detrás y podía recibir toques).
 - Vista previa: `tools/previews/pantalla_resultado.py` → `docs/previews/pantalla-resultado.png` (aproximada; el escudo real es el de `LeagueShield`).
 - Kotlin NO compilado acá.
+
+## Pausa real y retomar la partida (25-sep)
+- Reporte de Ricardo: a mitad de partida, Atrás → cerrar la app → volver con el ícono → Play: el juego empezaba de cero. Causa: Atrás a mitad de partida ABANDONABA (volvía a la app y cerraba la sesión) y la sesión diaria relanzaba el mismo juego como partida nueva.
+- Ahora (estilo de las apps de referencia): Atrás a mitad de partida (o la app pasa a segundo plano: `OnApplicationPause(true)`) abre `Games/Shared/PauseMenu.cs` (velo + panel de arcilla: Continuar / Reiniciar / Salir; Atrás con el menú abierto = Continuar). Con la partida terminada o sin partida, Atrás vuelve a la app como antes (`GameEntryPoint.Update`, `NativeBridge.GameFinished`).
+- Pausa real: `Games/Shared/GameClock.cs` (Time/DeltaTime pausables; en pausa `timeScale = 0` y `AudioListener.pause`). Se reemplazaron 106 usos de `Time.unscaledTime`/`unscaledDeltaTime` en los 9 controladores y en Shared (cuenta regresiva, FX, HUD), salvo `StarfieldFx`, `WorldBackdrop`, `PressScale`, `PauseMenu` (el fondo sigue vivo en pausa). `GameClock.Reset()` en cada carga de escena (`GameEntryPoint.Awake`). **Código nuevo de juegos: usar `GameClock.Time`/`GameClock.DeltaTime`, no `Time.unscaled*`.**
+- Reiniciar: `LaunchIntentConfigReader.RestartCurrentGame()` (misma partida desde cero, escena limpia).
+- Salir: `NativeBridge.ReturnToAppPaused()` → Kotlin `NativeReceiver.returnToApp(paused = true)` (`@JvmOverloads`; `EXTRA_PAUSED`) trae la app al frente SIN recargar la escena. `NeuroVidaViewModel.onReturnedFromGame(..., paused = true)` guarda `pausedGame` (sesión + launch id); `launchGame` del mismo juego (sesión diaria, biblioteca; no "Jugar de nuevo") relanza con `ActiveGameSession.resumeLaunchId` → mismo id → Unity no reinicia y se ve el menú de pausa para continuar. Abrir otro juego descarta la pausa.
+- Límites: si se cierra la app desde Recientes (o Android mata Unity por memoria), la partida en pausa se pierde y el juego empieza de cero (no se persiste el estado interno de las partidas).
+- Marca: `estilo 25-sep · c`. Kotlin NO compilado acá.

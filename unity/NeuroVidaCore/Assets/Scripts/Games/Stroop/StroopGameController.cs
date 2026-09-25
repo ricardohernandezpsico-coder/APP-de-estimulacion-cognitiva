@@ -133,13 +133,13 @@ namespace NeuroVida.Games.Stroop
             Canvas.ForceUpdateCanvases();
             Layout();
 
-            _roundEndsAt = Time.unscaledTime + StroopContract.EndlessSeconds;
+            _roundEndsAt = GameClock.Time + StroopContract.EndlessSeconds;
             _trialIndex = 0;
-            while (Endless ? Time.unscaledTime < _roundEndsAt : _trialIndex < StroopContract.TotalTrials)
+            while (Endless ? GameClock.Time < _roundEndsAt : _trialIndex < StroopContract.TotalTrials)
             {
                 yield return StartCoroutine(PresentTrial());
 
-                float startedAt = Time.unscaledTime;
+                float startedAt = GameClock.Time;
                 while (_answerIndex == (int)NoAnswer)
                 {
                     if (Endless && UpdateRoundClock()) _answerIndex = TimeUp;
@@ -206,7 +206,7 @@ namespace NeuroVida.Games.Stroop
             _cardRect.anchoredPosition = _cardRestPos;
             while (t < seconds)
             {
-                t += Time.unscaledDeltaTime;
+                t += GameClock.DeltaTime;
                 float k = Mathf.Clamp01(t / seconds);
                 _cardRect.localScale = Vector3.one * Mathf.LerpUnclamped(0.78f, 1f, UiFx.EaseOutBack(k));
                 _cardGroup.alpha = Mathf.Clamp01(k * 2.2f);
@@ -245,7 +245,7 @@ namespace NeuroVida.Games.Stroop
                 Vector2 from = _cardRestPos;
                 while (t < seconds)
                 {
-                    t += Time.unscaledDeltaTime;
+                    t += GameClock.DeltaTime;
                     float k = UiFx.EaseOutCubic(Mathf.Clamp01(t / seconds));
                     _cardRect.anchoredPosition = from + new Vector2(0f, 150f * k);
                     _cardRect.localScale = Vector3.one * (1f + 0.08f * k);
@@ -273,7 +273,7 @@ namespace NeuroVida.Games.Stroop
                 const float seconds = 0.16f;
                 while (t < seconds)
                 {
-                    t += Time.unscaledDeltaTime;
+                    t += GameClock.DeltaTime;
                     _cardGroup.alpha = 1f - Mathf.Clamp01(t / seconds);
                     yield return null;
                 }
@@ -288,7 +288,7 @@ namespace NeuroVida.Games.Stroop
             float from = _cardGroup.alpha;
             while (t < seconds)
             {
-                t += Time.unscaledDeltaTime;
+                t += GameClock.DeltaTime;
                 _cardGroup.alpha = from * (1f - Mathf.Clamp01(t / seconds));
                 yield return null;
             }
@@ -299,7 +299,7 @@ namespace NeuroVida.Games.Stroop
         /// En los últimos 5 segundos suena un tic por segundo.</summary>
         private bool UpdateRoundClock()
         {
-            float left = _roundEndsAt - Time.unscaledTime;
+            float left = _roundEndsAt - GameClock.Time;
             SetTimerFraction(Mathf.Clamp01(left / StroopContract.EndlessSeconds));
             int whole = Mathf.CeilToInt(left);
             if (whole <= 5 && whole >= 1 && whole != _lastTickSecond)
@@ -347,7 +347,7 @@ namespace NeuroVida.Games.Stroop
         {
             if (!_acceptInput || _ended) return;
             _acceptInput = false;
-            _answerAt = Time.unscaledTime;
+            _answerAt = GameClock.Time;
             _answerIndex = index;
         }
 
@@ -548,7 +548,7 @@ namespace NeuroVida.Games.Stroop
             const float half = 0.11f;
             while (t < half)
             {
-                t += Time.unscaledDeltaTime;
+                t += GameClock.DeltaTime;
                 _bannerRect.localScale = new Vector3(1f - Mathf.Clamp01(t / half), 1f, 1f);
                 yield return null;
             }
@@ -557,7 +557,7 @@ namespace NeuroVida.Games.Stroop
             const float back = 0.2f;
             while (t < back)
             {
-                t += Time.unscaledDeltaTime;
+                t += GameClock.DeltaTime;
                 float k = Mathf.Clamp01(t / back);
                 _bannerRect.localScale = new Vector3(Mathf.LerpUnclamped(0f, 1f, UiFx.EaseOutBack(k)), 1f, 1f);
                 yield return null;

@@ -97,7 +97,7 @@ namespace NeuroVida.Games.Shared
             float elapsed = 0f;
             while (elapsed < grow)
             {
-                elapsed += Time.unscaledDeltaTime;
+                elapsed += GameClock.DeltaTime;
                 float t = Mathf.Clamp01(elapsed / grow);
                 rect.localScale = Vector3.one * Mathf.Lerp(1f, 1.45f, t);
                 yield return null;
@@ -108,7 +108,7 @@ namespace NeuroVida.Games.Shared
             elapsed = 0f;
             while (elapsed < settle)
             {
-                elapsed += Time.unscaledDeltaTime;
+                elapsed += GameClock.DeltaTime;
                 float t = Mathf.Clamp01(elapsed / settle);
                 rect.localScale = Vector3.one * Mathf.Lerp(1.45f, 1f, t * t);
                 rect.localRotation = Quaternion.Euler(0f, 0f, Mathf.Sin(t * Mathf.PI * 5f) * 14f * (1f - t));

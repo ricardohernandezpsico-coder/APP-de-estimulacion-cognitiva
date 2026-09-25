@@ -283,7 +283,7 @@ namespace NeuroVida.Games.Secuencia
             ResetDots();
             _phasePill.Set("Tu turno · repite la secuencia", PhaseGreen);
             _awaitingInput = true;
-            _inputReadyAtTime = Time.unscaledTime;
+            _inputReadyAtTime = GameClock.Time;
             SetTilesInteractable(true);
         }
 
@@ -291,7 +291,7 @@ namespace NeuroVida.Games.Secuencia
         {
             if (!_awaitingInput) return;
 
-            float now = Time.unscaledTime;
+            float now = GameClock.Time;
             double reactionMs = System.Math.Max(0, (now - _inputReadyAtTime) * 1000.0);
             _reactionTimesMs.Add(reactionMs);
             _inputReadyAtTime = now;
@@ -687,7 +687,7 @@ namespace NeuroVida.Games.Secuencia
             while (elapsed < seconds)
             {
                 if (rect == null) yield break;
-                elapsed += Time.unscaledDeltaTime;
+                elapsed += GameClock.DeltaTime;
                 float t = Mathf.Clamp01(elapsed / seconds);
                 rect.localScale = Vector3.one * Mathf.Lerp(peak, 1f, UiFx.EaseOutCubic(t));
                 yield return null;
@@ -868,7 +868,7 @@ namespace NeuroVida.Games.Secuencia
             float elapsed = 0f;
             while (elapsed < total)
             {
-                elapsed += Time.unscaledDeltaTime;
+                elapsed += GameClock.DeltaTime;
                 for (int i = 0; i < count; i++)
                 {
                     if (!_tileImages.TryGetValue(i, out var image)) continue;
@@ -888,7 +888,7 @@ namespace NeuroVida.Games.Secuencia
             float elapsed = 0f;
             while (elapsed < seconds)
             {
-                elapsed += Time.unscaledDeltaTime;
+                elapsed += GameClock.DeltaTime;
                 float t = Mathf.Clamp01(elapsed / seconds);
                 foreach (var image in _tileImages.Values)
                 {
@@ -909,7 +909,7 @@ namespace NeuroVida.Games.Secuencia
             float elapsed = 0f;
             while (elapsed < total)
             {
-                elapsed += Time.unscaledDeltaTime;
+                elapsed += GameClock.DeltaTime;
                 for (int i = 0; i < count; i++)
                 {
                     if (!_tileImages.TryGetValue(i, out var image)) continue;
@@ -973,7 +973,7 @@ namespace NeuroVida.Games.Secuencia
             float elapsed = 0f;
             while (elapsed < durationSeconds)
             {
-                elapsed += Time.unscaledDeltaTime;
+                elapsed += GameClock.DeltaTime;
                 float t = Mathf.Clamp01(elapsed / durationSeconds);
                 image.color = Color.Lerp(fromColor, toColor, t);
                 glow.color = new Color(info.LightColor.r, info.LightColor.g, info.LightColor.b, Mathf.Lerp(fromGlow, toGlow, t));
@@ -997,7 +997,7 @@ namespace NeuroVida.Games.Secuencia
             float elapsed = 0f;
             while (elapsed < seconds)
             {
-                elapsed += Time.unscaledDeltaTime;
+                elapsed += GameClock.DeltaTime;
                 float t = Mathf.Clamp01(elapsed / seconds);
                 image.color = Color.Lerp(red, info.NormalColor, UiFx.EaseOutCubic(t));
                 rect.localRotation = Quaternion.Euler(0f, 0f, Mathf.Sin(t * Mathf.PI * 6f) * 8f * (1f - t));
@@ -1080,14 +1080,14 @@ namespace NeuroVida.Games.Secuencia
             float elapsed = 0f;
             while (elapsed < inSeconds)
             {
-                elapsed += Time.unscaledDeltaTime;
+                elapsed += GameClock.DeltaTime;
                 _feedbackFlashImage.color = Color.Lerp(new Color(peakColor.r, peakColor.g, peakColor.b, 0f), peakColor, elapsed / inSeconds);
                 yield return null;
             }
             elapsed = 0f;
             while (elapsed < outSeconds)
             {
-                elapsed += Time.unscaledDeltaTime;
+                elapsed += GameClock.DeltaTime;
                 _feedbackFlashImage.color = Color.Lerp(peakColor, new Color(peakColor.r, peakColor.g, peakColor.b, 0f), elapsed / outSeconds);
                 yield return null;
             }

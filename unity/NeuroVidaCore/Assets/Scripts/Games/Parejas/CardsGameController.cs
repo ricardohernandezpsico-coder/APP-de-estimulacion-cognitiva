@@ -237,7 +237,7 @@ namespace NeuroVida.Games.Parejas
             float elapsed = 0f;
             while (elapsed < total)
             {
-                elapsed += Time.unscaledDeltaTime;
+                elapsed += GameClock.DeltaTime;
                 for (int i = 0; i < count; i++)
                 {
                     if (!_cardImages.TryGetValue(i, out var image)) continue;
@@ -385,7 +385,7 @@ namespace NeuroVida.Games.Parejas
             int faceUpUnmatched = _cards.Count(c => c.IsFaceUp && !c.IsMatched);
             if (faceUpUnmatched == 0)
             {
-                _firstFlipTime = Time.unscaledTime;
+                _firstFlipTime = GameClock.Time;
                 SetCardFaceUp(id, true);
                 PlayTone(FlipToneHz, 0.08f, 0.12f);
             }
@@ -409,7 +409,7 @@ namespace NeuroVida.Games.Parejas
             var b = faceUp[1];
             bool matched = a.PairKey == b.PairKey;
 
-            long reactionMs = (long)System.Math.Max(0f, (Time.unscaledTime - _firstFlipTime) * 1000f);
+            long reactionMs = (long)System.Math.Max(0f, (GameClock.Time - _firstFlipTime) * 1000f);
             var profile = _dda.RegisterTrial(new VisualWorkingMemoryDDA.TrialResult(matched, false, reactionMs), _totalPairs);
 
             _attempts++;
@@ -890,7 +890,7 @@ namespace NeuroVida.Games.Parejas
             float total = stagger * cardCount + popDuration;
             while (elapsed < total)
             {
-                elapsed += Time.unscaledDeltaTime;
+                elapsed += GameClock.DeltaTime;
                 for (int i = 0; i < cardCount; i++)
                 {
                     if (!_cardImages.TryGetValue(i, out var image)) continue;
@@ -931,7 +931,7 @@ namespace NeuroVida.Games.Parejas
             float elapsed = 0f;
             while (elapsed < duration)
             {
-                elapsed += Time.unscaledDeltaTime;
+                elapsed += GameClock.DeltaTime;
                 float t = Mathf.Clamp01(elapsed / duration);
                 float pulse = 1f + 0.16f * Mathf.Sin(t * Mathf.PI);
                 rect.localScale = new Vector3(pulse, pulse, 1f);
@@ -960,7 +960,7 @@ namespace NeuroVida.Games.Parejas
             float elapsed = 0f;
             while (elapsed < duration)
             {
-                elapsed += Time.unscaledDeltaTime;
+                elapsed += GameClock.DeltaTime;
                 float t = Mathf.Clamp01(elapsed / duration);
                 float angle = Mathf.Sin(t * Mathf.PI * 6f) * 9f * (1f - t);
                 rect.localRotation = Quaternion.Euler(0f, 0f, angle);
@@ -1006,7 +1006,7 @@ namespace NeuroVida.Games.Parejas
             float elapsed = 0f;
             while (elapsed < FlipHalfSeconds)
             {
-                elapsed += Time.unscaledDeltaTime;
+                elapsed += GameClock.DeltaTime;
                 float t = Mathf.Clamp01(elapsed / FlipHalfSeconds);
                 rect.localScale = new Vector3(Mathf.Lerp(1f, 0f, t), Mathf.Lerp(1f, 1.06f, t), 1f);
                 yield return null;
@@ -1018,7 +1018,7 @@ namespace NeuroVida.Games.Parejas
             elapsed = 0f;
             while (elapsed < FlipHalfSeconds)
             {
-                elapsed += Time.unscaledDeltaTime;
+                elapsed += GameClock.DeltaTime;
                 float t = Mathf.Clamp01(elapsed / FlipHalfSeconds);
                 rect.localScale = new Vector3(Mathf.Lerp(0f, 1f, t), Mathf.Lerp(1.06f, 1f, t), 1f);
                 yield return null;

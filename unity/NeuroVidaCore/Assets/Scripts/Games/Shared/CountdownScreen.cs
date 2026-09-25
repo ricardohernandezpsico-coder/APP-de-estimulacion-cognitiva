@@ -34,7 +34,7 @@ namespace NeuroVida.Games.Shared
         /// <summary>Marca visible (solo en builds de depuración, abajo de la pantalla) para confirmar en el
         /// teléfono que el APK trae esta versión de los juegos: el export de Unity está fuera de git y si no se
         /// reexporta, Gradle empaqueta el viejo sin avisar. Cambiarla junto con cambios visibles de Unity.</summary>
-        public const string StyleStamp = "estilo 25-sep · b";
+        public const string StyleStamp = "estilo 25-sep · c";
 
         private static readonly Color[] StepColors = { NeuroStyle.Sky, NeuroStyle.Grape, NeuroStyle.Coral };
         private static readonly float[] StepWarp = { 0.07f, 0.15f, 0.27f };
@@ -190,7 +190,7 @@ namespace NeuroVida.Games.Shared
             float elapsed = 0f;
             while (elapsed < fadeIn)
             {
-                elapsed += Time.unscaledDeltaTime;
+                elapsed += GameClock.DeltaTime;
                 float t = Mathf.Clamp01(elapsed / fadeIn);
                 _group.alpha = t;
                 _titleChipRect.anchoredPosition = _titleChipBase + new Vector2(0f, (1f - EaseOutCubic(t)) * 40f);
@@ -244,7 +244,7 @@ namespace NeuroVida.Games.Shared
             float elapsed = 0f;
             while (elapsed < StepSeconds)
             {
-                elapsed += Time.unscaledDeltaTime;
+                elapsed += GameClock.DeltaTime;
                 float tPop = Mathf.Clamp01(elapsed / PopSeconds);
 
                 _number.rectTransform.localScale = Vector3.one * Mathf.LerpUnclamped(0.55f, 1f, EaseOutBack(tPop));
@@ -322,7 +322,7 @@ namespace NeuroVida.Games.Shared
             float elapsed = 0f;
             while (elapsed < total)
             {
-                float dt = Time.unscaledDeltaTime;
+                float dt = GameClock.DeltaTime;
                 elapsed += dt;
                 float t = elapsed / total;
 
@@ -531,7 +531,7 @@ namespace NeuroVida.Games.Shared
         {
             if (_bubbles == null) return;
             var size = _area.rect.size;
-            float dt = Time.unscaledDeltaTime;
+            float dt = GameClock.DeltaTime;
             for (int i = 0; i < _bubbles.Length; i++)
             {
                 _norm[i].y += _speed[i] * dt;

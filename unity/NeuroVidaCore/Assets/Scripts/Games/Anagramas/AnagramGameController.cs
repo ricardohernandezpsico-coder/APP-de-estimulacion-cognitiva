@@ -87,7 +87,7 @@ namespace NeuroVida.Games.Anagramas
         // Las fichas se deslizan suavemente hacia su destino (resorte amortiguado, independiente del framerate).
         private void Update()
         {
-            float k = 1f - Mathf.Exp(-16f * Time.unscaledDeltaTime);
+            float k = 1f - Mathf.Exp(-16f * GameClock.DeltaTime);
             foreach (var l in _letters)
                 if (l != null && l.Rect != null)
                     l.Rect.anchoredPosition = Vector2.Lerp(l.Rect.anchoredPosition, l.Target, k);
@@ -137,9 +137,9 @@ namespace NeuroVida.Games.Anagramas
             Canvas.ForceUpdateCanvases();
             LayoutStatic();
 
-            _roundEndsAt = Time.unscaledTime + AnagramContract.EndlessSeconds;
+            _roundEndsAt = GameClock.Time + AnagramContract.EndlessSeconds;
             _trialIndex = 0;
-            while (Endless ? Time.unscaledTime < _roundEndsAt : _trialIndex < AnagramContract.TotalTrials)
+            while (Endless ? GameClock.Time < _roundEndsAt : _trialIndex < AnagramContract.TotalTrials)
             {
                 yield return StartCoroutine(PlayWord());
                 if (_result == WordResult.TimeUp) break;
@@ -182,7 +182,7 @@ namespace NeuroVida.Games.Anagramas
             SetActionsInteractable(true);
             _acceptInput = true;
 
-            float startedAt = Time.unscaledTime;
+            float startedAt = GameClock.Time;
             while (_result == WordResult.Waiting)
             {
                 if (Endless && UpdateRoundClock()) _result = WordResult.TimeUp;
@@ -206,7 +206,7 @@ namespace NeuroVida.Games.Anagramas
                 _correct++;
                 _streak++;
                 _bestStreak = Mathf.Max(_bestStreak, _streak);
-                _solveMsSum += (long)((Time.unscaledTime - startedAt) * 1000f);
+                _solveMsSum += (long)((GameClock.Time - startedAt) * 1000f);
                 _solveCount++;
                 _points += AnagramContract.PointsFor(_streak, _hintUsed);
                 SetStreak(_streak);
@@ -383,7 +383,7 @@ namespace NeuroVida.Games.Anagramas
             float t = 0f;
             while (t < seconds)
             {
-                t += Time.unscaledDeltaTime;
+                t += GameClock.DeltaTime;
                 float k = Mathf.Clamp01(t / seconds);
                 foreach (var l in _letters) if (l.Rect != null) l.Rect.localScale = Vector3.one * (1f - k);
                 for (int i = 0; i < _word.Word.Length && i < _slotRects.Count; i++) _slotRects[i].localScale = Vector3.one * (1f - k);
@@ -394,7 +394,7 @@ namespace NeuroVida.Games.Anagramas
 
         private bool UpdateRoundClock()
         {
-            float left = _roundEndsAt - Time.unscaledTime;
+            float left = _roundEndsAt - GameClock.Time;
             float f = Mathf.Clamp01(left / AnagramContract.EndlessSeconds);
             _timerFill.anchorMax = new Vector2(f, 1f);
             _timerFill.offsetMin = _timerFill.offsetMax = Vector2.zero;

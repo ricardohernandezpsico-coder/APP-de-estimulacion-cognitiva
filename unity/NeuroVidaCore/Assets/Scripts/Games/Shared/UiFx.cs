@@ -67,7 +67,7 @@ namespace NeuroVida.Games.Shared
             float elapsed = 0f;
             while (elapsed < seconds)
             {
-                elapsed += Time.unscaledDeltaTime;
+                elapsed += GameClock.DeltaTime;
                 float t = Mathf.Clamp01(elapsed / seconds);
                 float dist = reach * EaseOutCubic(t);
                 for (int i = 0; i < count; i++)
@@ -97,7 +97,7 @@ namespace NeuroVida.Games.Shared
             float elapsed = 0f;
             while (elapsed < seconds)
             {
-                elapsed += Time.unscaledDeltaTime;
+                elapsed += GameClock.DeltaTime;
                 float t = Mathf.Clamp01(elapsed / seconds);
                 float size = Mathf.Lerp(fromSize, toSize, EaseOutCubic(t));
                 r.sizeDelta = new Vector2(size, size);
@@ -117,7 +117,7 @@ namespace NeuroVida.Games.Shared
             float elapsed = 0f;
             while (elapsed < seconds)
             {
-                elapsed += Time.unscaledDeltaTime;
+                elapsed += GameClock.DeltaTime;
                 float t = Mathf.Clamp01(elapsed / seconds);
                 float offset = Mathf.Sin(t * Mathf.PI * 7f) * amplitude * (1f - t);
                 for (int i = 0; i < rects.Length; i++)

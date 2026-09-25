@@ -162,8 +162,9 @@ object UnityGameLauncher {
     baseIntensity: Int,
     timed: Boolean,
     ageBand: AgeBand,
-    soundEnabled: Boolean = true
-  ): Intent = buildIntent(context, userId, gameId, level, baseIntensity, timed, ageBand, soundEnabled)
+    soundEnabled: Boolean = true,
+    launchId: String? = null // una partida en pausa se retoma con SU id (Unity no la reinicia)
+  ): Intent = buildIntent(context, userId, gameId, level, baseIntensity, timed, ageBand, soundEnabled, launchId)
 
   private fun launch(
     context: Context,
@@ -186,7 +187,8 @@ object UnityGameLauncher {
     baseIntensity: Int,
     timed: Boolean,
     ageBand: AgeBand,
-    soundEnabled: Boolean
+    soundEnabled: Boolean,
+    launchId: String? = null
   ): Intent {
     val savedRating = com.example.NeuroVidaApplication.instance.repository.gameDdaRating.value[gameId] ?: -1f
     val config = InitConfigDto(
@@ -207,6 +209,6 @@ object UnityGameLauncher {
     return Intent(context, UnityPlayerGameActivity::class.java)
       .addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
       .putExtra(EXTRA_CONFIG_JSON, json)
-      .putExtra(EXTRA_LAUNCH_ID, java.util.UUID.randomUUID().toString())
+      .putExtra(EXTRA_LAUNCH_ID, launchId ?: java.util.UUID.randomUUID().toString())
   }
 }

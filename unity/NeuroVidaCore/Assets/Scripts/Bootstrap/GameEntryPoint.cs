@@ -57,17 +57,64 @@ namespace NeuroVida.Bridge
         /// Unity vuelve al frente y arranca la partida nueva no muestra un fondo gris azulado ajeno a la app.</summary>
         private void Awake()
         {
+            NeuroVida.Games.Shared.GameClock.Reset(); // cada carga de escena = partida nueva o reposo
             var cam = Camera.main;
             if (cam == null) return;
             cam.clearFlags = CameraClearFlags.SolidColor;
             cam.backgroundColor = NeuroVida.Games.Shared.NeuroStyle.NightBottom;
         }
 
-        /// <summary>Botón Atrás de Android (llega como Escape): cierra la pantalla de Unity y vuelve a la app.
-        /// A mitad de partida no se guarda nada (el resultado solo se envía al terminar).</summary>
+        private NeuroVida.Games.Shared.PauseMenu _pause;
+        private bool _running; // en esta escena arrancó una partida
+
+        private bool InProgress => _running && !NativeBridge.GameFinished;
+
+        /// <summary>Botón Atrás de Android (llega como Escape). A mitad de partida PAUSA (menú Continuar /
+        /// Reiniciar / Salir) en vez de abandonarla; con el menú abierto, Atrás = Continuar; con la partida
+        /// terminada (o sin partida), vuelve a la app.</summary>
         private void Update()
         {
-            if (Input.GetKeyDown(KeyCode.Escape)) NativeBridge.CloseGameScreen();
+            if (!Input.GetKeyDown(KeyCode.Escape)) return;
+            if (_pause != null && _pause.IsShown)
+            {
+                _pause.ResumeFromBack();
+                return;
+            }
+            if (InProgress)
+            {
+                ShowPause();
+                return;
+            }
+            NativeBridge.CloseGameScreen();
+        }
+
+        /// <summary>La app pasa a segundo plano (Inicio, llamada, otra app) a mitad de partida: queda en pausa, y al
+        /// volver se ve el menú en vez de encontrar la partida corriendo o con el reloj vencido.</summary>
+        private void OnApplicationPause(bool paused)
+        {
+            if (paused && InProgress) ShowPause();
+        }
+
+        private void ShowPause()
+        {
+            if (_pause == null)
+            {
+                _pause = NeuroVida.Games.Shared.PauseMenu.Create(
+                    transform,
+                    onResume: null,
+                    onRestart: LaunchIntentConfigReader.RestartCurrentGame,
+                    onExit: ExitPaused);
+            }
+            _pause.Show();
+        }
+
+        /// <summary>"Salir" del menú de pausa: vuelve a la app con la partida en pausa (el menú queda visible para
+        /// cuando se vuelva a abrir el juego). Si no se puede, se abandona como antes.</summary>
+        private void ExitPaused()
+        {
+            if (NativeBridge.ReturnToAppPaused()) return;
+            NeuroVida.Games.Shared.GameClock.Reset();
+            NativeBridge.CloseGameScreen();
         }
 
         /// <summary>Invocado por <c>UnityPlayer.UnitySendMessage</c> desde el lado nativo.
@@ -81,6 +128,7 @@ namespace NeuroVida.Bridge
                 return;
             }
 
+            _running = true;
             switch (config.game_id)
             {
                 case SequenceGameController.GameId:

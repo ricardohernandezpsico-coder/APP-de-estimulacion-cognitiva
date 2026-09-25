@@ -127,13 +127,13 @@ namespace NeuroVida.Games.Comparacion
             Canvas.ForceUpdateCanvases();
             Layout();
 
-            _roundEndsAt = Time.unscaledTime + ComparisonContract.EndlessSeconds;
+            _roundEndsAt = GameClock.Time + ComparisonContract.EndlessSeconds;
             _trialIndex = 0;
-            while (Endless ? Time.unscaledTime < _roundEndsAt : _trialIndex < ComparisonContract.TotalTrials)
+            while (Endless ? GameClock.Time < _roundEndsAt : _trialIndex < ComparisonContract.TotalTrials)
             {
                 yield return StartCoroutine(PresentTrial());
 
-                float startedAt = Time.unscaledTime;
+                float startedAt = GameClock.Time;
                 while (_answerSide == NoAnswer)
                 {
                     if (Endless && UpdateRoundClock()) _answerSide = TimeUp;
@@ -180,7 +180,7 @@ namespace NeuroVida.Games.Comparacion
             const float seconds = 0.22f;
             while (t < seconds)
             {
-                t += Time.unscaledDeltaTime;
+                t += GameClock.DeltaTime;
                 float k = Mathf.Clamp01(t / seconds);
                 float e = UiFx.EaseOutBack(k);
                 for (int i = 0; i < 2; i++)
@@ -330,7 +330,7 @@ namespace NeuroVida.Games.Comparacion
             float t = 0f;
             while (t < seconds)
             {
-                t += Time.unscaledDeltaTime;
+                t += GameClock.DeltaTime;
                 float k = UiFx.EaseOutCubic(Mathf.Clamp01(t / seconds));
                 for (int i = 0; i < 2; i++)
                 {
@@ -349,7 +349,7 @@ namespace NeuroVida.Games.Comparacion
             const float seconds = 0.15f;
             while (t < seconds)
             {
-                t += Time.unscaledDeltaTime;
+                t += GameClock.DeltaTime;
                 float a = 1f - Mathf.Clamp01(t / seconds);
                 foreach (var c in _cards) c.Group.alpha = Mathf.Min(c.Group.alpha, a);
                 yield return null;
@@ -359,7 +359,7 @@ namespace NeuroVida.Games.Comparacion
 
         private bool UpdateRoundClock()
         {
-            float left = _roundEndsAt - Time.unscaledTime;
+            float left = _roundEndsAt - GameClock.Time;
             SetTimerFraction(Mathf.Clamp01(left / ComparisonContract.EndlessSeconds));
             int whole = Mathf.CeilToInt(left);
             if (whole <= 5 && whole >= 1 && whole != _lastTickSecond)
@@ -407,7 +407,7 @@ namespace NeuroVida.Games.Comparacion
         {
             if (!_acceptInput || _ended) return;
             _acceptInput = false;
-            _answerAt = Time.unscaledTime;
+            _answerAt = GameClock.Time;
             _answerSide = side;
         }
 
