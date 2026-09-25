@@ -504,17 +504,20 @@ class NeuroVidaViewModel(application: Application) : AndroidViewModel(applicatio
   }
 
   /**
-   * Fin del onboarding (primera vez): guarda nombre (si lo escribió), meta de días por semana y rango de edad
-   * de una sola vez. Poner `ageBand` es lo que saca al usuario del onboarding (ver `MainActivity`). Con
+   * Fin del onboarding (primera vez): guarda nombre (si lo escribió), meta de días por semana, recordatorio
+   * ([reminderHour] null = sin recordatorios) y rango de edad de una sola vez. Poner `ageBand` es lo que saca al usuario del onboarding (ver `MainActivity`). Con
    * [startFirstSession] arranca enseguida la sesión de hoy.
    */
-  fun completeOnboarding(name: String, band: AgeBand, weeklyGoal: Int, startFirstSession: Boolean) {
+  fun completeOnboarding(name: String, band: AgeBand, weeklyGoal: Int, reminderHour: Int?, startFirstSession: Boolean) {
     viewModelScope.launch {
       val current = userSettings.value
       repository.updateSettings(
         current.copy(
           name = name.trim().ifEmpty { current.name },
           weeklyGoal = weeklyGoal,
+          notificationsEnabled = reminderHour != null,
+          reminderHour = reminderHour ?: current.reminderHour,
+          reminderMinute = if (reminderHour != null) 0 else current.reminderMinute,
           ageBand = band
         )
       )
@@ -525,6 +528,17 @@ class NeuroVidaViewModel(application: Application) : AndroidViewModel(applicatio
   /** Solo depuración (botón en Ajustes): vuelve a mostrar el onboarding (sin borrar partidas ni progreso). */
   fun debugRestartOnboarding() {
     viewModelScope.launch { repository.updateSettings(userSettings.value.copy(ageBand = null)) }
+  }
+
+  /**
+   * "Jugar ahora" desde el recordatorio. Espera un momento a que carguen los ajustes (al abrir en frío todavía
+   * valen los de fábrica) y solo arranca si ya pasó el onboarding y no hay otro juego en curso.
+   */
+  fun startDailySessionFromReminder() {
+    viewModelScope.launch {
+      kotlinx.coroutines.delay(700)
+      if (userSettings.value.ageBand != null && _activeGame.value == null && _lastResult.value == null) startDailySession()
+    }
   }
 
   fun triggerTestNotification() {

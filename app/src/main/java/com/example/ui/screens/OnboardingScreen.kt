@@ -1,6 +1,10 @@
 package com.example.ui.screens
 
+import android.Manifest
+import android.os.Build
 import android.provider.Settings
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.LinearEasing
@@ -85,21 +89,25 @@ import kotlin.math.sin
 
 private val OnNight = Color(0xFFEAF0FF)
 private val OnNightDim = Color(0xFFB4BFEA)
-private const val Pages = 5
+private const val Pages = 6
 
 /**
  * Primera experiencia (una sola vez, mientras `UserSettings.ageBand == null`): 5 pasos cortos sobre el cielo de
  * la app, sin formularios largos ni recuadros. 1) Bienvenida: los 9 juegos orbitando. 2) Tu nombre (opcional).
  * 3) Rango de edad (ajusta el ritmo de los juegos; es el único dato que hace falta). 4) Cuántos días por semana.
- * 5) Cómo funciona (camino diario, ligas, logros) y "Jugar mi primera sesión", que arranca la sesión de hoy.
+ * 5) Recordatorio diario: hora o ninguno (aquí se pide el permiso de notificaciones de Android 13+).
+ * 6) Cómo funciona (camino diario, ligas, logros) y "Jugar mi primera sesión", que arranca la sesión de hoy.
  * Atrás vuelve al paso anterior. Todo se guarda al final ([onFinish]).
  */
 @Composable
-fun OnboardingScreen(onFinish: (name: String, band: AgeBand, weeklyGoal: Int, play: Boolean) -> Unit) {
+fun OnboardingScreen(onFinish: (name: String, band: AgeBand, weeklyGoal: Int, reminderHour: Int?, play: Boolean) -> Unit) {
   var page by rememberSaveable { mutableIntStateOf(0) }
   var name by rememberSaveable { mutableStateOf("") }
   var band by rememberSaveable { mutableStateOf<AgeBand?>(null) }
   var goal by rememberSaveable { mutableIntStateOf(4) }
+  // Hora del recordatorio (-1 = sin recordatorios). Se guarda recién si Android da el permiso de notificaciones.
+  var reminderHour by rememberSaveable { mutableIntStateOf(19) }
+  var askedHour by rememberSaveable { mutableIntStateOf(19) }
   var forward by remember { mutableStateOf(true) }
   fun go(to: Int) {
     forward = to > page
@@ -107,6 +115,24 @@ fun OnboardingScreen(onFinish: (name: String, band: AgeBand, weeklyGoal: Int, pl
   }
 
   BackHandler(enabled = page > 0) { go(page - 1) }
+
+  // Android 13+: el permiso de notificaciones se pide acá, con contexto ("a la hora que elegiste").
+  val notificationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+    reminderHour = if (granted) askedHour else -1
+    go(5)
+  }
+  fun pickReminder(hour: Int?) {
+    if (hour == null) {
+      reminderHour = -1
+      go(5)
+    } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+      askedHour = hour
+      notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+    } else {
+      reminderHour = hour
+      go(5)
+    }
+  }
 
   Box(Modifier.fillMaxSize()) {
     CosmosBackground()
@@ -181,9 +207,18 @@ fun OnboardingScreen(onFinish: (name: String, band: AgeBand, weeklyGoal: Int, pl
             tags = listOf("3", "4", "5", "7"),
             onPick = { i -> goal = listOf(3, 4, 5, 7)[i]; go(4) }
           )
+          4 -> ChoicePage(
+            title = "¿Te recordamos cada día?",
+            hint = "Un aviso corto a la hora que elijas. Si ya completaste tu camino de hoy, no llega.",
+            options = listOf("Por la mañana" to "9:00", "Al mediodía" to "13:00", "Por la tarde" to "19:00", "Por la noche" to "21:00", "Sin recordatorios" to null),
+            selected = null,
+            tagPrefix = "reminder_",
+            tags = listOf("9", "13", "19", "21", "off"),
+            onPick = { i -> pickReminder(listOf(9, 13, 19, 21, null)[i]) }
+          )
           else -> HowItWorksPage(
-            onPlay = { onFinish(name, band ?: AgeBand.ADULT, goal, true) },
-            onExplore = { onFinish(name, band ?: AgeBand.ADULT, goal, false) }
+            onPlay = { onFinish(name, band ?: AgeBand.ADULT, goal, reminderHour.takeIf { it >= 0 }, true) },
+            onExplore = { onFinish(name, band ?: AgeBand.ADULT, goal, reminderHour.takeIf { it >= 0 }, false) }
           )
         }
       }

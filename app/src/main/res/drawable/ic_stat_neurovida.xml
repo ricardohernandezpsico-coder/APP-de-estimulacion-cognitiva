@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Ícono de notificación (monocromo, lo tiñe el sistema): el destello de 4 puntas de la app + un destello chico. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M11,2 Q11,11 20,11 Q11,11 11,20 Q11,11 2,11 Q11,11 11,2 Z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M19,15 Q19,18.5 22.5,18.5 Q19,18.5 19,22 Q19,18.5 15.5,18.5 Q19,18.5 19,15 Z" />
+</vector>

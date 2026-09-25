@@ -62,7 +62,10 @@ class MainActivity : ComponentActivity() {
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
-    if (savedInstanceState == null) handleGameReturn(intent)
+    if (savedInstanceState == null) {
+      handleGameReturn(intent)
+      handleStartSession(intent)
+    }
     // Atrás en la pantalla raíz: la app pasa a segundo plano en vez de cerrarse. Unity queda vivo DEBAJO de esta
     // Activity entre partidas (ver UnityGameHost); cerrarla lo dejaría a la vista. Los BackHandler de Compose
     // (diálogos, Ajustes) se registran después y tienen prioridad.
@@ -87,7 +90,7 @@ class MainActivity : ComponentActivity() {
           // normal. Al terminar se guarda todo junto y, si eligió jugar, arranca la sesión de hoy.
           if (userSettings.ageBand == null) {
             com.example.ui.screens.OnboardingScreen(
-              onFinish = { name, band, goal, play -> viewModel.completeOnboarding(name, band, goal, play) }
+              onFinish = { name, band, goal, hour, play -> viewModel.completeOnboarding(name, band, goal, hour, play) }
             )
           } else {
             NeuroVidaApp(viewModel = viewModel)
@@ -102,6 +105,18 @@ class MainActivity : ComponentActivity() {
     super.onNewIntent(intent)
     setIntent(intent)
     handleGameReturn(intent)
+    handleStartSession(intent)
+  }
+
+  /** "Jugar ahora" del recordatorio diario (ver `CognitiveReminderWorker`): arranca la sesión de hoy. */
+  private fun handleStartSession(intent: Intent?) {
+    if (intent?.getBooleanExtra(EXTRA_START_SESSION, false) != true) return
+    intent.removeExtra(EXTRA_START_SESSION)
+    viewModel.startDailySessionFromReminder()
+  }
+
+  companion object {
+    const val EXTRA_START_SESSION = "neurovida_start_session"
   }
 
   private fun handleGameReturn(intent: Intent?) {

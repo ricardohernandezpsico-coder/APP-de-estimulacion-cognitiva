@@ -9,6 +9,9 @@ import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.work.*
 import com.example.MainActivity
+import com.example.R
+import com.example.data.local.toDomain
+import com.example.model.GameRegistry
 import com.example.data.local.NeuroVidaDatabase
 import java.text.SimpleDateFormat
 import java.util.*
@@ -21,68 +24,76 @@ class CognitiveReminderWorker(
 
   override suspend fun doWork(): Result {
     val database = NeuroVidaDatabase.getDatabase(context)
-    val userProfile = database.userProfileDao().getUserProfileSync()
+    val profile = database.userProfileDao().getActiveProfileSync() ?: database.userProfileDao().getUserProfileSync()
+    if (profile?.notificationsEnabled == false) return Result.success()
 
-    // If notifications are disabled by the user, do not post
-    if (userProfile?.notificationsEnabled == false) {
-      return Result.success()
-    }
+    val now = System.currentTimeMillis()
+    val today = localDay(now)
+    val days = database.gameResultDao().getAllResultsSync().map { localDay(it.timestamp) }.toSet()
+    var streak = 0
+    while ((today - 1 - streak) in days) streak++
 
-    // Check if the user already trained today
-    val todayKey = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
-    val dailySession = database.dailySessionDao().getDailySessionSync(todayKey)
-    val completedCount = dailySession?.completedCount ?: 0
+    val cal = Calendar.getInstance()
+    val mondayOffset = (cal.get(Calendar.DAY_OF_WEEK) + 5) % 7 // lunes = 0
+    val weekStart = today - mondayOffset
 
-    // If already finished all daily exercises, send an encouraging or celebratory note if appropriate,
-    // or skip to avoid nagging
-    val userName = userProfile?.name?.ifBlank { "Explorador" } ?: "Explorador"
+    val todayKey = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date(now))
+    val session = database.dailySessionDao().getDailySessionSync(todayKey)?.toDomain()
+    val completed = session?.completedCount ?: 0
+    val nextTitle = session?.gameIds?.getOrNull(completed)?.let { GameRegistry.getById(it)?.title }
 
-    val (title, message) = if (completedCount >= 3) {
-      Pair(
-        "¡Excelente trabajo, $userName! 🌟",
-        "Ya completaste tu entrenamiento de hoy. Tu mente sigue ágil y en forma."
+    val message = buildReminder(
+      ReminderInput(
+        name = profile?.name.orEmpty(),
+        streakUntilYesterday = streak,
+        playedToday = today in days,
+        completedToday = completed,
+        daysThisWeek = days.count { it >= weekStart },
+        weeklyGoal = profile?.weeklyGoal ?: 4,
+        nextGameTitle = nextTitle,
+        daysSinceLastPlay = days.maxOrNull()?.let { (today - it).toInt() },
+        dayOfYear = cal.get(Calendar.DAY_OF_YEAR)
       )
-    } else {
-      val pending = (3 - completedCount).coerceAtLeast(1)
-      val motivationalMessages = listOf(
-        "Te faltan $pending ejercicios para completar tu entrenamiento del día. ¡Tu mente te lo agradecerá!",
-        "5 minutos de entrenamiento diario marcan la diferencia. Mantén activa tu concentración y memoria.",
-        "Tu sesión personalizada de hoy te está esperando. ¡Despierta tus neuronas con un reto divertido!",
-        "Constancia y agilidad: completa tu sesión diaria para cuidar tu reserva cognitiva."
-      )
-      Pair(
-        "🧠 Tiempo de activación mental, $userName",
-        motivationalMessages.random()
-      )
-    }
+    ) ?: return Result.success() // ya completó hoy: no se insiste
 
-    sendNotification(title, message)
+    sendNotification(message.title, message.text)
     return Result.success()
   }
+
+  private fun localDay(ts: Long): Long = (ts + TimeZone.getDefault().getOffset(ts)) / (24L * 60 * 60 * 1000)
 
   private fun sendNotification(title: String, message: String) {
     val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
     createNotificationChannel(notificationManager)
 
-    val intent = Intent(context, MainActivity::class.java).apply {
-      flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-    }
-
-    val pendingIntent = PendingIntent.getActivity(
+    // REORDER_TO_FRONT (no CLEAR_TOP): trae la app sin recrearla ni cerrar Unity, que vive detrás en la misma tarea.
+    val openApp = PendingIntent.getActivity(
       context,
       NOTIFICATION_REQUEST_CODE,
-      intent,
+      Intent(context, MainActivity::class.java).apply { flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT },
+      PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+    )
+    // "Jugar ahora": abre la app y arranca la sesión de hoy (ver MainActivity.EXTRA_START_SESSION).
+    val playNow = PendingIntent.getActivity(
+      context,
+      NOTIFICATION_REQUEST_CODE + 1,
+      Intent(context, MainActivity::class.java).apply {
+        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
+        putExtra(MainActivity.EXTRA_START_SESSION, true)
+      },
       PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
     )
 
     val notification = NotificationCompat.Builder(context, CHANNEL_ID)
-      .setSmallIcon(android.R.drawable.ic_popup_reminder)
+      .setSmallIcon(R.drawable.ic_stat_neurovida)
+      .setColor(0xFFFFC93C.toInt()) // sol de la app
       .setContentTitle(title)
       .setContentText(message)
       .setStyle(NotificationCompat.BigTextStyle().bigText(message))
       .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-      .setContentIntent(pendingIntent)
+      .setContentIntent(openApp)
+      .addAction(0, "Jugar ahora", playNow)
       .setAutoCancel(true)
       .build()
 
@@ -93,10 +104,10 @@ class CognitiveReminderWorker(
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
       val channel = NotificationChannel(
         CHANNEL_ID,
-        "Recordatorios de Estimulación Cognitiva",
+        "Recordatorio diario",
         NotificationManager.IMPORTANCE_DEFAULT
       ).apply {
-        description = "Notificaciones diarias para ejercitar la memoria, atención y agilidad mental."
+        description = "Un aviso al día para tu camino de juegos. No llega si ya completaste la sesión de hoy."
         enableVibration(true)
       }
       notificationManager.createNotificationChannel(channel)
