@@ -1112,6 +1112,18 @@ fun SettingsScreen(
     // corre en el emulador x86_64 que usa hoy el proyecto para pruebas.
     if (com.example.BuildConfig.DEBUG) {
       OutlinedButton(
+        onClick = { viewModel.debugShowPromotion() },
+        shape = RoundedCornerShape(14.dp),
+        modifier = Modifier
+          .fillMaxWidth()
+          .testTag("btn_debug_promotion")
+      ) {
+        Text("[Debug] Ver celebración de ascenso de liga")
+      }
+
+      Spacer(modifier = Modifier.height(12.dp))
+
+      OutlinedButton(
         onClick = {
           com.example.bridge.UnityGameLauncher.launchSecuenciaLuminica(
             context = context,

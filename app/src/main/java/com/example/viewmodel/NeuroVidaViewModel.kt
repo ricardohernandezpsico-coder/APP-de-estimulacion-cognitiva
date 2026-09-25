@@ -93,6 +93,19 @@ class NeuroVidaViewModel(application: Application) : AndroidViewModel(applicatio
   private val _lastResult = MutableStateFlow<Pair<GamePlayResult, Boolean>?>(null)
   val lastResult: StateFlow<Pair<GamePlayResult, Boolean>?> = _lastResult.asStateFlow()
 
+  /** Ascenso de liga de la última partida (se celebra encima de la pantalla de resultado); null = no hubo. */
+  private val _promotion = MutableStateFlow<LeaguePromotion?>(null)
+  val promotion: StateFlow<LeaguePromotion?> = _promotion.asStateFlow()
+
+  fun dismissPromotion() {
+    _promotion.value = null
+  }
+
+  /** Solo depuración (botón en Ajustes): muestra la celebración sin tener que ganar 250 trofeos. */
+  fun debugShowPromotion() {
+    _promotion.value = LeaguePromotion(RankTier.PLATA, RankTier.BRONCE, gameId = "secuencia", rating = 255)
+  }
+
   // Computed streak
   val currentStreak: StateFlow<Int> = combine(gameHistory) { history ->
     repository.calculateStreak(history[0])
@@ -222,9 +235,10 @@ class NeuroVidaViewModel(application: Application) : AndroidViewModel(applicatio
   fun onUnityResult(result: GamePlayResult) {
     val current = _activeGame.value
     viewModelScope.launch {
-      val levelUp = repository.recordGameResult(result)
+      val outcome = repository.recordGameResult(result)
       if (current != null && current.gameDef.id == result.gameId) {
-        _lastResult.value = Pair(result, levelUp)
+        _promotion.value = outcome.promotion(result.gameId)
+        _lastResult.value = Pair(result, outcome.didLevelUp)
         _activeGame.value = null
         triggerHapticFeedback(if (result.score >= 70) HapticType.SUCCESS else HapticType.LIGHT)
       }
@@ -327,8 +341,9 @@ class NeuroVidaViewModel(application: Application) : AndroidViewModel(applicatio
       level = current.level
     )
     viewModelScope.launch {
-      val levelUp = repository.recordGameResult(result)
-      _lastResult.value = Pair(result, levelUp)
+      val outcome = repository.recordGameResult(result)
+      _promotion.value = outcome.promotion(result.gameId)
+      _lastResult.value = Pair(result, outcome.didLevelUp)
       _activeGame.value = null
     }
 

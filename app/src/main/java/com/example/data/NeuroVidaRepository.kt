@@ -396,13 +396,15 @@ class NeuroVidaRepository(
     return selected
   }
 
-  suspend fun recordGameResult(result: GamePlayResult): Boolean = withContext(Dispatchers.IO) {
+  suspend fun recordGameResult(result: GamePlayResult): RecordOutcome = withContext(Dispatchers.IO) {
     // 1. Add to Room game_results table
     gameResultDao.insert(result.toEntity())
 
     // 2. Adaptive level calculation and progress update in Room
     val currentProgress = gameProgressDao.getProgressForGameSync(result.gameId)
       ?: GameProgressEntity(gameId = result.gameId, currentLevel = 1)
+    // Trofeos de los 9 juegos antes de esta partida (liga general = promedio; sin jugar = 0).
+    val ratingsBefore = gameProgressDao.getAllProgressSync().associate { it.gameId to it.eloRating }
 
     val activeProfile = userProfileDao.getActiveProfileSync() ?: userProfileDao.getUserProfileSync()
     val isAdaptive = activeProfile?.difficultyMode == "ADAPTIVE"
@@ -448,6 +450,8 @@ class NeuroVidaRepository(
       lastPlayedTimestamp = result.timestamp
     )
     gameProgressDao.insertOrUpdate(updatedProgress)
+    val ratingsAfter = ratingsBefore + (result.gameId to newRating)
+    val globalOf = { m: Map<String, Int> -> GameRegistry.allGames.sumOf { m[it.id] ?: 0 } / GameRegistry.allGames.size }
 
     // 3. Advance Daily Session in Room if game matches current queue
     val today = getTodayDateKey()
@@ -487,7 +491,13 @@ class NeuroVidaRepository(
       _claimedChallenges.value = _claimedChallenges.value + claimId
     }
 
-    didLevelUp
+    RecordOutcome(
+      didLevelUp = didLevelUp,
+      gameRatingBefore = currentProgress.eloRating,
+      gameRatingAfter = newRating,
+      globalBefore = globalOf(ratingsBefore),
+      globalAfter = globalOf(ratingsAfter)
+    )
   }
 
   // Cuánto sube o baja el ELO de un juego tras una partida. A mayor tier, más

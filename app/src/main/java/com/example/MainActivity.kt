@@ -119,6 +119,7 @@ fun NeuroVidaApp(viewModel: NeuroVidaViewModel) {
   val lastResult by viewModel.lastResult.collectAsState()
   val dailySession by viewModel.dailySession.collectAsState()
   val gameRanks by viewModel.gameRanks.collectAsState()
+  val promotion by viewModel.promotion.collectAsState()
 
   Box(modifier = Modifier.fillMaxSize()) {
     com.example.ui.components.CosmosBackground()
@@ -129,7 +130,7 @@ fun NeuroVidaApp(viewModel: NeuroVidaViewModel) {
       containerColor = androidx.compose.ui.graphics.Color.Transparent,
       bottomBar = {
         // Show bottom bar only when not playing a game or looking at results
-        if (activeGame == null && lastResult == null) {
+        if (activeGame == null && lastResult == null && promotion == null) {
           com.example.ui.components.NeuroNavBar(
             current = currentTab,
             onSelect = { viewModel.setTab(it) },
@@ -205,6 +206,12 @@ fun NeuroVidaApp(viewModel: NeuroVidaViewModel) {
               }
             }
           )
+        }
+
+        // Ascenso de liga: se celebra encima del resultado (después de que se vio el puntaje). No depende de que
+        // el resultado siga abierto: si el usuario lo cerró antes, la celebración aparece igual sobre la pestaña.
+        promotion?.let { p ->
+          com.example.ui.components.LeaguePromotionOverlay(promotion = p, onDismiss = { viewModel.dismissPromotion() })
         }
       }
     }

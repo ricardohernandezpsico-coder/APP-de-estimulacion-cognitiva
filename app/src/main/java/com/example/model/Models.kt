@@ -272,6 +272,32 @@ enum class RankTier(val tierName: String, val minRating: Int, val icon: String, 
   }
 }
 
+/**
+ * Lo que dejó guardar una partida ([com.example.data.NeuroVidaRepository.recordGameResult]): si subió de nivel y
+ * los trofeos antes/después, del juego y de la liga general (promedio de los 9 juegos, sin jugar = 0).
+ */
+data class RecordOutcome(
+  val didLevelUp: Boolean,
+  val gameRatingBefore: Int,
+  val gameRatingAfter: Int,
+  val globalBefore: Int,
+  val globalAfter: Int
+) {
+  /** Ascenso de liga para celebrar: primero la liga general (más rara y más importante), si no la del juego. */
+  fun promotion(gameId: String): LeaguePromotion? {
+    val gBefore = RankTier.fromRating(globalBefore)
+    val gAfter = RankTier.fromRating(globalAfter)
+    if (gAfter.ordinal > gBefore.ordinal) return LeaguePromotion(gAfter, gBefore, gameId = null, rating = globalAfter)
+    val before = RankTier.fromRating(gameRatingBefore)
+    val after = RankTier.fromRating(gameRatingAfter)
+    if (after.ordinal > before.ordinal) return LeaguePromotion(after, before, gameId = gameId, rating = gameRatingAfter)
+    return null
+  }
+}
+
+/** Subida a una liga nueva: [gameId] = liga de ese juego; null = liga general. */
+data class LeaguePromotion(val tier: RankTier, val previous: RankTier, val gameId: String?, val rating: Int)
+
 data class GameRankInfo(
   val gameId: String,
   val rating: Int
