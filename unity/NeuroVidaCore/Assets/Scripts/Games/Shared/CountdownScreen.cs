@@ -31,6 +31,11 @@ namespace NeuroVida.Games.Shared
         private const int TickSparkles = 6;
         private const int GoSparkles = 26;
 
+        /// <summary>Marca visible (solo en builds de depuración, abajo de la pantalla) para confirmar en el
+        /// teléfono que el APK trae esta versión de los juegos: el export de Unity está fuera de git y si no se
+        /// reexporta, Gradle empaqueta el viejo sin avisar. Cambiarla junto con cambios visibles de Unity.</summary>
+        public const string StyleStamp = "estilo 25-sep";
+
         private static readonly Color[] StepColors = { NeuroStyle.Sky, NeuroStyle.Grape, NeuroStyle.Coral };
         private static readonly float[] StepWarp = { 0.07f, 0.15f, 0.27f };
         private static readonly Color GoColor = NeuroStyle.Sun;
@@ -115,8 +120,8 @@ namespace NeuroVida.Games.Shared
             _orbitStar = NewChild("OrbitStar", _root, new Vector2(0f, _orbitRadius), new Vector2(44f * _u, 44f * _u));
             _orbitStarImage = AddImage(_orbitStar, SparkleSprite.Get(), Color.white);
 
-            _numberOut = NewText("NumberOut", _root, Vector2.zero, new Vector2(340f * _u, 200f * _u), 118, TextAnchor.MiddleCenter, clay: true);
-            _number = NewText("Number", _root, Vector2.zero, new Vector2(340f * _u, 200f * _u), 118, TextAnchor.MiddleCenter, clay: true);
+            _numberOut = NewText("NumberOut", _root, Vector2.zero, new Vector2(340f * _u, 200f * _u), 140, TextAnchor.MiddleCenter, clay: true);
+            _number = NewText("Number", _root, Vector2.zero, new Vector2(340f * _u, 200f * _u), 140, TextAnchor.MiddleCenter, clay: true);
 
             // Píldora de arcilla crema con el título (arriba del anillo), como las píldoras de la app.
             _titleChipBase = new Vector2(0f, 262f * _u);
@@ -130,6 +135,16 @@ namespace NeuroVida.Games.Shared
             _title.GetComponent<Shadow>().enabled = false; // texto tinta sobre crema: sin sombra
 
             _subtitle = NewText("Subtitle", _root, new Vector2(0f, -262f * _u), new Vector2(960f, 90f * _u), 26, TextAnchor.MiddleCenter, clay: false);
+
+            if (Debug.isDebugBuild)
+            {
+                var stamp = NewText("StyleStamp", _root, Vector2.zero, new Vector2(600f, 60f), 12, TextAnchor.MiddleCenter, clay: false);
+                var sr = stamp.rectTransform;
+                sr.anchorMin = sr.anchorMax = new Vector2(0.5f, 0f);
+                sr.anchoredPosition = new Vector2(0f, 90f);
+                stamp.text = StyleStamp;
+                stamp.color = NeuroStyle.WithAlpha(NeuroStyle.Cream, 0.55f);
+            }
 
             _sparkles = new RectTransform[GoSparkles];
             _sparkleImages = new Image[GoSparkles];

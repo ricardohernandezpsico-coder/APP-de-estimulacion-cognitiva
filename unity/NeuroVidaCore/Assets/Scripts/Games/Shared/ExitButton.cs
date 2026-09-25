@@ -28,10 +28,8 @@ namespace NeuroVida.Games.Shared
             var img = _root.AddComponent<Image>();
             img.sprite = RoundedRectSprite.Get(64);
             img.type = Image.Type.Sliced;
-            img.color = new Color(0x14 / 255f, 0xB8 / 255f, 0xA6 / 255f);
-            var outline = _root.AddComponent<Outline>();
-            outline.effectColor = new Color(0f, 0f, 0f, 0.28f);
-            outline.effectDistance = new Vector2(0f, -5f);
+            img.color = NeuroStyle.Sun; // acción principal en sol con texto tinta, como el botón "Entrenar" de la app
+            NeuroStyle.ClayFrame(img, 6f, 14f);
 
             var button = _root.AddComponent<Button>();
             button.transition = Selectable.Transition.None;
@@ -48,10 +46,9 @@ namespace NeuroVida.Games.Shared
             text.font = UiFonts.Bold;
             text.fontSize = 64;
             text.alignment = TextAnchor.MiddleCenter;
-            text.color = Color.white;
+            text.color = NeuroStyle.Ink;
             text.raycastTarget = false;
             text.text = "Continuar";
-            UiFonts.AddSoftShadow(textGo, 3f, 0.35f);
 
             _root.SetActive(false);
         }

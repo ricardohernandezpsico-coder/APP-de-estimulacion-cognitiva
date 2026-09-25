@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    Verificación de compilación de los scripts de Unity SIN Unity (para sesiones en la nube / CI).
+    Compila todo Assets/Scripts salvo Editor/ y Tests/ contra ensamblados de referencia de NuGet
+    (UnityEngine 2021.3 + UI 2018.3). Detecta errores de C# (sintaxis, tipos, miembros inexistentes);
+    NO reemplaza abrir el proyecto en Unity 6 ni prueba nada en tiempo de ejecución.
+    Uso: dotnet build tools/unity-compile-check -v q
+  -->
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <LangVersion>9.0</LangVersion>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <Nullable>disable</Nullable>
+    <NoWarn>CS0414;CS0169;CS0649;CS0618;NU1701</NoWarn>
+    <SrcRoot Condition="'$(SrcRoot)'==''">$(MSBuildThisFileDirectory)../../unity/NeuroVidaCore/Assets/Scripts</SrcRoot>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="$(SrcRoot)/**/*.cs" Exclude="$(SrcRoot)/**/Editor/**;$(SrcRoot)/**/Tests/**" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="UnityEngine.Modules" Version="2021.3.33" />
+    <PackageReference Include="Unity3D.UnityEngine.UI" Version="2018.3.5.1" />
+  </ItemGroup>
+</Project>

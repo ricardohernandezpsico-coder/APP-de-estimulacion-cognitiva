@@ -27,7 +27,29 @@ namespace NeuroVida.Games.Shared
         {
             _audioSource = gameObject.AddComponent<AudioSource>();
             BuildUi();
+            StyleResultPanel();
             gameObject.SetActive(false);
+        }
+
+        /// <summary>Panel de resultado con el sello de la app: superficie azul noche con borde tinta y sombra dura,
+        /// y el puntaje gigante en sol "de arcilla". Se aplica a los 7 juegos después de que cada uno arma el suyo.</summary>
+        private void StyleResultPanel()
+        {
+            if (_resultRoot == null) return;
+            var panel = _resultRoot.GetComponent<Image>();
+            if (panel != null)
+            {
+                panel.color = NeuroStyle.Surface;
+                NeuroStyle.ClayFrame(panel, 7f, 18f);
+            }
+            var score = _resultRoot.Find("Score");
+            var scoreText = score != null ? score.GetComponent<Text>() : null;
+            if (scoreText != null)
+            {
+                foreach (var old in scoreText.GetComponents<Shadow>()) Destroy(old);
+                scoreText.color = NeuroStyle.Sun;
+                NeuroStyle.ClayText(scoreText, 6f, 12f);
+            }
         }
 
         /// <summary>Arma toda la UI del juego por código (llamado una sola vez, en <see cref="Awake"/>).</summary>

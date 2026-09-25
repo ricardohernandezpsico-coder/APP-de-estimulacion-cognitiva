@@ -28,6 +28,9 @@ namespace NeuroVida.Games.Shared
         public static readonly Color NightTop = Hex(0x101A58);
         public static readonly Color StarWarm = Hex(0xFFC38A);
 
+        /// <summary>Superficie de paneles sobre el cielo (azul noche opaco, como las superficies de la app).</summary>
+        public static readonly Color Surface = Hex(0x1B2466);
+
         public static Color Hex(int rgb, float alpha = 1f) =>
             new Color(((rgb >> 16) & 0xFF) / 255f, ((rgb >> 8) & 0xFF) / 255f, (rgb & 0xFF) / 255f, alpha);
 
@@ -53,6 +56,28 @@ namespace NeuroVida.Games.Shared
             var o2 = go.AddComponent<Outline>();
             o2.effectColor = Ink;
             o2.effectDistance = new Vector2(outline, outline);
+            o2.useGraphicAlpha = true;
+        }
+
+        /// <summary>
+        /// Marco "de arcilla" para un panel o botón con sprite redondeado: borde tinta grueso y sombra dura tinta
+        /// hacia abajo. Reemplaza cualquier Shadow/Outline previo del mismo objeto (bordes tenues de antes).
+        /// </summary>
+        public static void ClayFrame(Graphic graphic, float border, float depth)
+        {
+            foreach (var old in graphic.GetComponents<Shadow>()) Object.Destroy(old); // Outline hereda de Shadow
+            var go = graphic.gameObject;
+            var shadow = go.AddComponent<Shadow>();
+            shadow.effectColor = Ink;
+            shadow.effectDistance = new Vector2(0f, -depth);
+            shadow.useGraphicAlpha = true; // se desvanece junto con el panel
+            var o = go.AddComponent<Outline>();
+            o.effectColor = Ink;
+            o.effectDistance = new Vector2(border, -border);
+            o.useGraphicAlpha = true;
+            var o2 = go.AddComponent<Outline>();
+            o2.effectColor = Ink;
+            o2.effectDistance = new Vector2(border, border);
             o2.useGraphicAlpha = true;
         }
 

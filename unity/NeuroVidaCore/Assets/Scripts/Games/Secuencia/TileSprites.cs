@@ -3,22 +3,40 @@ using UnityEngine;
 namespace NeuroVida.Games.Secuencia
 {
     /// <summary>
-    /// Sprite procedural de la ficha de Secuencia Lumínica, estilo "clay" (ficha 3D
-    /// gruesa: cara con degradé, bisel con luz arriba-izquierda, brillo suave y un labio
-    /// inferior más oscuro que da el grosor) -- el mismo lenguaje visual que las cartas de
-    /// Parejas Ocultas (<c>CardSprites</c>). Está en ESCALA DE GRISES: <c>Image.color</c> la
-    /// tiñe con el color de cada ficha (multiplica), así una sola textura sirve para todas.
+    /// Sprite procedural de las fichas y botones de TODOS los juegos, con el sello "noche + arcilla" de la app
+    /// (rediseño 25-sep; antes era una ficha gris con bisel, labio y sombra difusa): cara con brillo suave
+    /// arriba, borde oscuro grueso y sombra dura sólida debajo, igual que los botones de arcilla de la app
+    /// (<c>ui/theme/Clay.kt</c>). Está en ESCALA DE GRISES: <c>Image.color</c> la tiñe con el color de cada
+    /// ficha (multiplica), así una sola textura sirve para todas; el borde y la sombra son negros, así que
+    /// quedan oscuros sea cual sea el color.
+    ///
+    /// <see cref="GetPressed"/> es la misma ficha "hundida" (la cara baja y la sombra casi desaparece): la usa
+    /// <c>PressScale</c> al presionar, así el toque se siente físico sin cambiar el espacio que ocupa el botón.
+    /// Ocupa la misma huella que la versión anterior (<see cref="ShapeScale"/>), para no mover ningún layout.
     /// </summary>
     public static class TileSprites
     {
         private const int SizePx = 256;
         private const float Aa = 0.014f;
+
+        // La ficha ocupa solo ShapeScale del sprite; el margen aloja el borde y la sombra dura.
+        private const float ShapeScale = 0.86f;
+
+        private const float FaceY = 0.06f;        // centro vertical de la cara (en reposo)
+        private const float Border = 0.075f;      // grosor del borde oscuro
+        private const float Depth = 0.14f;        // cuánto asoma la sombra dura debajo
+        private const float PressTravel = 0.10f;  // cuánto baja la cara al presionar
+
         private static Sprite _cached;
+        private static Sprite _pressed;
 
-        public static Sprite Get()
+        public static Sprite Get() => _cached != null ? _cached : (_cached = Build(0f));
+
+        /// <summary>La misma ficha presionada (cara hundida hacia su sombra).</summary>
+        public static Sprite GetPressed() => _pressed != null ? _pressed : (_pressed = Build(PressTravel));
+
+        private static Sprite Build(float press)
         {
-            if (_cached != null) return _cached;
-
             var pixels = new Color32[SizePx * SizePx];
             for (int y = 0; y < SizePx; y++)
             {
@@ -26,7 +44,7 @@ namespace NeuroVida.Games.Secuencia
                 {
                     float nx = (x + 0.5f) / SizePx * 2f - 1f;
                     float ny = (y + 0.5f) / SizePx * 2f - 1f;
-                    pixels[y * SizePx + x] = Pixel(nx, ny);
+                    pixels[y * SizePx + x] = Pixel(nx / ShapeScale, ny / ShapeScale, press);
                 }
             }
             var tex = new Texture2D(SizePx, SizePx, TextureFormat.RGBA32, false)
@@ -36,8 +54,7 @@ namespace NeuroVida.Games.Secuencia
             };
             tex.SetPixels32(pixels);
             tex.Apply();
-            _cached = Sprite.Create(tex, new Rect(0, 0, SizePx, SizePx), new Vector2(0.5f, 0.5f), SizePx);
-            return _cached;
+            return Sprite.Create(tex, new Rect(0, 0, SizePx, SizePx), new Vector2(0.5f, 0.5f), SizePx);
         }
 
         private static float EdgeStep(float sdf) => Mathf.Clamp01(0.5f - sdf / Aa);
@@ -51,25 +68,7 @@ namespace NeuroVida.Games.Secuencia
             return Mathf.Sqrt(ox * ox + oy * oy) + Mathf.Min(Mathf.Max(qx, qy), 0f) - r;
         }
 
-        // La ficha ocupa solo ShapeScale del sprite; el margen aloja la sombra suave horneada
-        // (en vez del componente Shadow de uGUI, que se veía duro/pixeleado).
-        private const float ShapeScale = 0.86f;
-
-        private static Color32 Pixel(float nx, float ny)
-        {
-            float sx = nx / ShapeScale, sy = ny / ShapeScale;
-            Color32 shape = ShapePixel(sx, sy);
-            float shadowSd = RoundBox(sx, sy + 0.16f, -0.05f) * ShapeScale;
-            float sh = 0.42f * (1f - Mathf.SmoothStep(0f, 1f, Mathf.Clamp01((shadowSd + 0.03f) / 0.24f)));
-            float sa = shape.a / 255f;
-            float outA = sa + sh * (1f - sa);
-            if (outA <= 0.0001f) return new Color32(0, 0, 0, 0);
-            float k = sa / outA;
-            byte g = (byte)(shape.r * k);
-            return new Color32(g, g, g, (byte)(outA * 255f));
-        }
-
-        private static Color32 ShapePixel(float nx, float ny)
+        private static Color32 Pixel(float nx, float ny, float press)
         {
             float a = 0f, c = 0f; // gris premultiplicado + alfa
 
@@ -80,34 +79,34 @@ namespace NeuroVida.Games.Secuencia
                 a = alpha + a * (1f - alpha);
             }
 
-            // Labio inferior (grosor de la ficha).
-            float lip = RoundBox(nx, ny, -0.05f);
-            Over(0.50f, EdgeStep(lip));
+            float faceY = FaceY - press;
 
-            // Cara.
-            float face = RoundBox(nx, ny, 0.07f);
+            // Sombra dura: la silueta con borde, desplazada hacia abajo (siempre en la misma posición, así al
+            // hundirse la cara "la tapa").
+            float shadow = RoundBox(nx, ny, FaceY - Depth) - Border;
+            Over(0f, EdgeStep(shadow));
+
+            // Borde oscuro grueso alrededor de la cara.
+            float face = RoundBox(nx, ny, faceY);
+            Over(0f, EdgeStep(face - Border));
+
+            // Cara: degradé vertical suave (arriba más luminosa) y una sombra interior en el borde de abajo, que
+            // le da volumen de arcilla sin el bisel duro de antes.
             float faceMask = EdgeStep(face);
+            float t = Mathf.Clamp01((0.93f - (ny - faceY)) / 1.8f);
+            float fill = Mathf.Lerp(0.95f, 0.84f, t);
+            float innerShade = Mathf.Clamp01((ny - faceY + 0.86f) / 0.26f); // 0 en el borde inferior
+            fill *= Mathf.Lerp(0.80f, 1f, innerShade);
+            Over(fill, faceMask);
 
-            // Bisel: normal aproximada por diferencias finitas del SDF; luz desde arriba-izquierda.
-            const float e = 0.01f;
-            float gx = RoundBox(nx + e, ny, 0.07f) - RoundBox(nx - e, ny, 0.07f);
-            float gy = RoundBox(nx, ny + e, 0.07f) - RoundBox(nx, ny - e, 0.07f);
-            float gl = Mathf.Sqrt(gx * gx + gy * gy) + 1e-5f;
-            float nxn = gx / gl, nyn = gy / gl;
-            float lit = Mathf.Clamp01((-nxn * 0.6f + nyn * 0.8f) * 0.5f + 0.5f); // 1 = mira a la luz
-            float bevelShade = Mathf.Lerp(0.74f, 1.0f, lit);
-            Over(bevelShade, faceMask);
+            // Borde de luz interior en la mitad de arriba (el "canto" de la arcilla).
+            float rim = Mathf.Clamp01(1f - Mathf.Abs(face + 0.07f) / 0.05f) * Mathf.Clamp01((ny - faceY) / 0.5f);
+            Over(1f, rim * 0.45f * faceMask);
 
-            // Interior de la cara (más chico que el bisel) con degradé vertical.
-            const float bevelWidth = 0.11f;
-            float inner = EdgeStep(face + bevelWidth);
-            float t = Mathf.Clamp01((0.93f - ny) / 1.7f);
-            float fill = Mathf.Lerp(1.0f, 0.90f, t);
-            Over(fill, inner);
-
-            // Brillo suave en el tercio superior.
-            float gloss = Mathf.Clamp01((ny - 0.30f) / 0.55f);
-            Over(1f, gloss * gloss * 0.20f * inner);
+            // Brillo de arcilla: una cápsula clara y difusa arriba a la izquierda.
+            float gx = (nx + 0.30f) / 0.46f, gy = (ny - faceY - 0.50f) / 0.17f;
+            float gloss = Mathf.Clamp01(1f - (gx * gx + gy * gy));
+            Over(1f, Mathf.Sqrt(gloss) * 0.42f * faceMask);
 
             byte g = (byte)(Mathf.Clamp01(a > 0.0001f ? c / a : 0f) * 255f);
             return new Color32(g, g, g, (byte)(Mathf.Clamp01(a) * 255f));

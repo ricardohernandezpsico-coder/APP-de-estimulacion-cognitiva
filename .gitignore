@@ -44,3 +44,7 @@ unity/test-results/
 # Cache de Python de las skills
 __pycache__/
 *.pyc
+
+# Verificación de compilación de Unity sin Unity (tools/unity-compile-check)
+tools/unity-compile-check/bin/
+tools/unity-compile-check/obj/

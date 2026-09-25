@@ -37,6 +37,7 @@ namespace NeuroVida.Games.Shared
             _bg.sprite = RoundedRectSprite.Get(64);
             _bg.type = Image.Type.Sliced;
             _bg.raycastTarget = false;
+            NeuroStyle.ClayFrame(_bg, 4f, 8f);
 
             var dotGo = new GameObject("Dot");
             dotGo.transform.SetParent(go.transform, false);
