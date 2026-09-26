@@ -34,6 +34,9 @@ namespace NeuroVida.Games.Shared
         /// <summary>Marca visible (solo en builds de depuración, abajo de la pantalla) para confirmar en el
         /// teléfono que el APK trae esta versión de los juegos: el export de Unity está fuera de git y si no se
         /// reexporta, Gradle empaqueta el viejo sin avisar. Cambiarla junto con cambios visibles de Unity.</summary>
+        /// <summary>Muestra la marca de version bajo la cuenta regresiva. Antes dependia de <c>Debug.isDebugBuild</c>,
+        /// pero la exportacion de Unity es de produccion y nunca se veia. Poner en false antes de publicar en la tienda.</summary>
+        public const bool ShowStyleStamp = true;
         public const string StyleStamp = "estilo 26-sep · g";
 
         private static readonly Color[] StepColors = { NeuroStyle.Sky, NeuroStyle.Grape, NeuroStyle.Coral };
@@ -136,7 +139,7 @@ namespace NeuroVida.Games.Shared
 
             _subtitle = NewText("Subtitle", _root, new Vector2(0f, -262f * _u), new Vector2(960f, 90f * _u), 26, TextAnchor.MiddleCenter, clay: false);
 
-            if (Debug.isDebugBuild)
+            if (ShowStyleStamp)
             {
                 var stamp = NewText("StyleStamp", _root, Vector2.zero, new Vector2(600f, 60f), 12, TextAnchor.MiddleCenter, clay: false);
                 var sr = stamp.rectTransform;
