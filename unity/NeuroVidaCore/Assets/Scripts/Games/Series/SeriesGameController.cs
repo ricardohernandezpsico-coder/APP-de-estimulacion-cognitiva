@@ -15,7 +15,8 @@ namespace NeuroVida.Games.Series
     /// una y una quinta, con un "?", late esperando. Se elige el número que sigue entre cuatro
     /// opciones. Al responder se REVELA la regla sobre el mismo tablero: entre las fichas aparecen
     /// los pasos ("+5", "×3"...) y el "?" se convierte en la respuesta, además de la explicación en
-    /// texto. Reto = ronda de 120 s sin límite de series (sube de nivel al ir acertando);
+    /// texto. Arte propio: una lupa de arcilla (<see cref="MagnifierSprite"/>) "busca" sobre la ficha "?" y los
+    /// números de las fichas van en arcilla (contorno tinta y sombra dura). Reto = ronda de 120 s sin límite de series (sube de nivel al ir acertando);
     /// Precisión = 8 series sin reloj. Reglas de <c>SeriesGame.kt</c> (ver <see cref="SeriesContract"/>).
     /// Telemetría: reusa <see cref="StroopTelemetry"/>.
     /// </summary>
@@ -69,7 +70,7 @@ namespace NeuroVida.Games.Series
 
         // UI
         private RectTransform _safe, _bannerRect, _timerBg, _timerFill, _fxRect, _rowRect, _optionsRoot;
-                private Image _timerFillImage, _lensRing, _bannerImage;
+                private Image _timerFillImage, _lensRing, _bannerImage, _magnifier;
         private Text _bannerText;
         private ProgressDots _dots;
         private PhasePill _pill;
@@ -189,11 +190,12 @@ namespace NeuroVida.Games.Series
                 t.Rect.gameObject.SetActive(true);
                 t.Rect.localScale = Vector3.zero;
                 t.Image.color = isTerm ? TermColor : LensColor;
-                t.Label.color = isTerm ? Color.white : new Color(0.20f, 0.12f, 0.02f);
+                t.Label.color = Color.white;
                 t.Label.text = isTerm ? _item.Terms[i].ToString() : "?";
                 FitToken(t, t.Label.text);
             }
             _lensRing.color = new Color(LensColor.r, LensColor.g, LensColor.b, 0f);
+            _magnifier.gameObject.SetActive(false);
             _rowRect.localScale = Vector3.one;
             _rowRect.anchoredPosition = _rowRest;
             for (int i = 0; i < 4; i++)
@@ -211,6 +213,8 @@ namespace NeuroVida.Games.Series
                 PlayTone(392f * Mathf.Pow(2f, i * 2f / 12f), 0.12f, 0.10f);
                 yield return new WaitForSeconds(i == _count - 2 ? 0.14f : 0.09f);
             }
+            _magnifier.gameObject.SetActive(true);
+            StartCoroutine(PopIn(_magnifier.rectTransform, 0.22f));
             StartCoroutine(PulseLens());
 
             // Opciones con rebote escalonado.
@@ -231,6 +235,7 @@ namespace NeuroVida.Games.Series
                 float t = Mathf.PingPong(GameClock.Time * 1.6f, 1f);
                 _lensRing.color = new Color(LensColor.r, LensColor.g, LensColor.b, 0.25f + 0.55f * t);
                 _lensRing.rectTransform.localScale = Vector3.one * (1.02f + 0.10f * t);
+                _magnifier.rectTransform.localRotation = Quaternion.Euler(0f, 0f, -8f + 16f * t); // la lupa "busca"
                 yield return null;
             }
             _lensRing.color = new Color(LensColor.r, LensColor.g, LensColor.b, 0f);
@@ -244,6 +249,7 @@ namespace NeuroVida.Games.Series
             int answerIndex = System.Array.IndexOf(_item.Options, _item.Answer);
             if (!Endless) _dots.Mark(_trialIndex, correct);
 
+            _magnifier.gameObject.SetActive(false);
             var answerToken = _tokens[_count - 1];
             answerToken.Label.text = _item.Answer.ToString();
             answerToken.Label.color = Color.white;
@@ -539,7 +545,8 @@ namespace NeuroVida.Games.Series
                 t.Image.color = TermColor;
                 t.Image.raycastTarget = false;
 
-                t.Label = MakeText(go.transform, "Number", 90, TextAnchor.MiddleCenter, Color.white, 3f, 0.35f);
+                t.Label = MakeText(go.transform, "Number", 90, TextAnchor.MiddleCenter, Color.white, 0f, 0f);
+                NeuroStyle.ClayText(t.Label, 4f, 7f); // número "de arcilla": contorno tinta y sombra dura
                 t.Label.horizontalOverflow = HorizontalWrapMode.Overflow;
                 t.Label.verticalOverflow = VerticalWrapMode.Overflow;
                 var lr = t.Label.rectTransform;
@@ -577,6 +584,17 @@ namespace NeuroVida.Games.Series
             _lensRing.sprite = RadialGlowSprite.Get();
             _lensRing.raycastTarget = false;
             _lensRing.color = new Color(LensColor.r, LensColor.g, LensColor.b, 0f);
+
+            // Lupa de detective sobre la ficha "?": lo que hay que descubrir (se esconde al responder).
+            var magGo = new GameObject("Magnifier");
+            magGo.transform.SetParent(_rowRect, false);
+            var mr = magGo.AddComponent<RectTransform>();
+            mr.anchorMin = mr.anchorMax = new Vector2(0.5f, 0.5f);
+            mr.pivot = new Vector2(0.5f, 0.5f);
+            _magnifier = magGo.AddComponent<Image>();
+            _magnifier.sprite = MagnifierSprite.Get();
+            _magnifier.raycastTarget = false;
+            magGo.SetActive(false);
         }
 
         private void BuildOptions()
@@ -691,6 +709,9 @@ namespace NeuroVida.Games.Series
             var ring = _lensRing.rectTransform;
             ring.sizeDelta = new Vector2(_tokenSize * 1.35f, _tokenSize * 1.35f);
             ring.anchoredPosition = TokenPos(_count - 1);
+            var mag = _magnifier.rectTransform;
+            mag.sizeDelta = new Vector2(_tokenSize * 0.66f, _tokenSize * 0.66f);
+            mag.anchoredPosition = TokenPos(_count - 1) + new Vector2(_tokenSize * 0.34f, _tokenSize * 0.38f);
         }
 
         private void Layout()

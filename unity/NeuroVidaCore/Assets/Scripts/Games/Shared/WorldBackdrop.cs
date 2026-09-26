@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using NeuroVida.Games.Parejas; // SymbolSprite (asteroides)
 using NeuroVida.Games.Secuencia;
 
 namespace NeuroVida.Games.Shared
@@ -8,7 +9,7 @@ namespace NeuroVida.Games.Shared
     /// <summary>
     /// "Mundo" de fondo de un juego. Todos comparten el sello de la app: el mismo cielo nocturno
     /// (<see cref="NeuroStyle.NightGradient"/>), nebulosas y estrellas en perspectiva. Encima, cada juego tiene
-    /// UN elemento propio ligado a su mecánica (lunas gemelas en Parejas, mar en Ruta del Tesoro, órbitas en
+    /// UN elemento propio ligado a su mecánica (lunas gemelas en Parejas, superficie lunar en Ruta del Tesoro, órbitas en
     /// Cambio de Chip...), para que jugar varios seguidos no se sienta repetitivo. Es decoración pura: todo va
     /// detrás del contenido y nada recibe toques.
     /// </summary>
@@ -27,10 +28,12 @@ namespace NeuroVida.Games.Shared
         public Vector3[] Moons = new Vector3[0];
         public Color[] MoonTints = new Color[0];
 
-        /// <summary>Mar en la parte baja (0 = sin mar), como fracción del alto.</summary>
-        public float SeaHeight;
-        public Color SeaTop = NeuroStyle.Hex(0x0E3B5C);
-        public Color SeaBottom = NeuroStyle.Hex(0x04142A);
+        /// <summary>Superficie de una luna en la parte baja (0 = sin superficie), como fracción del alto.</summary>
+        public float SurfaceHeight;
+        public Color SurfaceColor = NeuroStyle.Hex(0x9C94D6);
+
+        /// <summary>Asteroides de arcilla que flotan y giran despacio: posición normalizada (x, y) y tamaño (z).</summary>
+        public Vector3[] Asteroids = new Vector3[0];
 
         public int OrbitRings;
         public Vector2 OrbitCenter = new Vector2(0.5f, 0.45f);
@@ -59,12 +62,12 @@ namespace NeuroVida.Games.Shared
             NebulaA = NeuroStyle.WithAlpha(NeuroStyle.Grape, 0.26f), NebulaB = NeuroStyle.WithAlpha(NeuroStyle.Coral, 0.16f),
         };
 
-        public static GameWorld MoonlitIsland => new GameWorld
+        public static GameWorld TreasureMoon => new GameWorld
         {
-            Name = "Isla bajo la luna", SeaHeight = 0.2f, Stars = 40, VanishingPoint = new Vector2(0.5f, 0.3f),
-            Moons = new[] { new Vector3(0.80f, 0.83f, 170f) }, MoonTints = new[] { NeuroStyle.Hex(0xFFF4D6) },
-            NebulaA = NeuroStyle.WithAlpha(NeuroStyle.Sky, 0.24f), NebulaB = NeuroStyle.WithAlpha(NeuroStyle.Coral, 0.12f),
-            NebulaBPos = new Vector2(0.2f, 0.3f),
+            Name = "Luna del tesoro", SurfaceHeight = 0.15f, Stars = 46, VanishingPoint = new Vector2(0.5f, 0.3f),
+            Asteroids = new[] { new Vector3(0.02f, 0.58f, 120f), new Vector3(0.985f, 0.40f, 96f), new Vector3(0.90f, 0.18f, 64f) },
+            NebulaA = NeuroStyle.WithAlpha(NeuroStyle.Grape, 0.24f), NebulaB = NeuroStyle.WithAlpha(NeuroStyle.Sky, 0.16f),
+            NebulaBPos = new Vector2(0.8f, 0.35f),
         };
 
         public static GameWorld Neon => new GameWorld
@@ -131,9 +134,10 @@ namespace NeuroVida.Games.Shared
             var ambient = bgRect.gameObject.AddComponent<WorldAmbient>();
             ambient.Init(bgRect);
 
-            if (world.SeaHeight > 0f) AddSea(bgRect, ambient, world); // antes que las lunas: su reflejo va encima del mar
             for (int i = 0; i < world.Moons.Length; i++)
-                AddMoon(bgRect, ambient, world.Moons[i], i < world.MoonTints.Length ? world.MoonTints[i] : NeuroStyle.Cream, world.SeaHeight);
+                AddMoon(bgRect, ambient, world.Moons[i], i < world.MoonTints.Length ? world.MoonTints[i] : NeuroStyle.Cream);
+            for (int i = 0; i < world.Asteroids.Length; i++) AddAsteroid(bgRect, ambient, world.Asteroids[i], i);
+            if (world.SurfaceHeight > 0f) AddSurface(bgRect, ambient, world); // tapa las estrellas de abajo
             if (world.OrbitRings > 0) AddOrbits(bgRect, ambient, world);
             for (int i = 0; i < world.Planets.Length; i++)
                 AddPlanet(bgRect, world.Planets[i], i < world.PlanetColors.Length ? world.PlanetColors[i] : NeuroStyle.Grape);
@@ -145,7 +149,7 @@ namespace NeuroVida.Games.Shared
 
         // ---- piezas ----
 
-        private static void AddMoon(RectTransform parent, WorldAmbient ambient, Vector3 moon, Color tint, float seaHeight)
+        private static void AddMoon(RectTransform parent, WorldAmbient ambient, Vector3 moon, Color tint)
         {
             var anchor = new Vector2(moon.x, moon.y);
             float size = moon.z;
@@ -163,38 +167,28 @@ namespace NeuroVida.Games.Shared
                 r.anchoredPosition = new Vector2(c.x * size, c.y * size);
                 Img(r, DiscSprite.Get(), new Color(0.55f, 0.5f, 0.7f, 0.16f));
             }
-
-            // Reflejo en el mar: una columna de luz que titila bajo la luna.
-            if (seaHeight > 0f)
-            {
-                var refl = Node(parent, "MoonReflection", new Vector2(moon.x, 0f), new Vector2(size * 0.9f, 0f));
-                refl.anchorMin = new Vector2(moon.x, seaHeight * 0.06f);
-                refl.anchorMax = new Vector2(moon.x, seaHeight * 0.94f); // se estira con el alto real del mar
-                var reflImg = Img(refl, RadialGlowSprite.Get(), NeuroStyle.WithAlpha(tint, 0.22f));
-                ambient.Breathe(reflImg, 0.22f, 0.09f, 2.3f);
-            }
         }
 
-        private static void AddSea(RectTransform parent, WorldAmbient ambient, GameWorld world)
+        private static void AddSurface(RectTransform parent, WorldAmbient ambient, GameWorld world)
         {
-            var sea = Layer(parent, "Sea");
-            sea.anchorMax = new Vector2(1f, world.SeaHeight); // se agrega después de las estrellas: las tapa
-            Img(sea, VerticalGradient(world.SeaTop, world.SeaBottom), Color.white);
+            // Luz del borde del horizonte (respira despacio) y la superficie de arcilla encima.
+            var rim = Node(parent, "HorizonGlow", new Vector2(0.5f, world.SurfaceHeight), new Vector2(1500f, 300f));
+            var rimImg = Img(rim, RadialGlowSprite.Get(), NeuroStyle.WithAlpha(NeuroStyle.Sky, 0.16f));
+            ambient.Breathe(rimImg, 0.16f, 0.05f, 0.6f);
 
-            // Línea del horizonte y destellos horizontales que se mecen.
-            var line = Node(sea, "Horizon", new Vector2(0.5f, 1f), new Vector2(0f, 6f));
-            line.anchorMin = new Vector2(0f, 1f);
-            line.anchorMax = new Vector2(1f, 1f);
-            Img(line, null, NeuroStyle.WithAlpha(NeuroStyle.Sky, 0.35f));
-            for (int i = 0; i < 5; i++)
-            {
-                float y = 0.2f + i * 0.15f;
-                var s = Node(sea, "Shimmer", new Vector2(0.15f + (i * 0.37f) % 0.7f, y), new Vector2(160f + i * 30f, 6f));
-                var sImg = Img(s, RoundedRectSprite.Get(4), NeuroStyle.WithAlpha(NeuroStyle.Cream, 0.10f));
-                sImg.type = Image.Type.Sliced;
-                ambient.Sway(s, 40f + i * 8f, 0.35f + i * 0.07f);
-                ambient.Breathe(sImg, 0.10f, 0.06f, 1.2f + i * 0.3f);
-            }
+            var surface = Layer(parent, "MoonSurface");
+            surface.anchorMax = new Vector2(1f, world.SurfaceHeight + 0.02f); // la franja incluye un margen sobre el arco
+            Img(surface, LunarSurfaceSprite.Get(world.SurfaceColor), Color.white);
+        }
+
+        private static void AddAsteroid(RectTransform parent, WorldAmbient ambient, Vector3 a, int i)
+        {
+            // Asteroide de arcilla (el mismo de Parejas), apagado hacia la noche: es fondo, no debe competir.
+            var rect = Node(parent, "Asteroid", new Vector2(a.x, a.y), new Vector2(a.z, a.z));
+            Img(rect, SymbolSprite.Get(ShapeKind.Asteroid, i % 2 == 0 ? 1 : 0), new Color(0.62f, 0.62f, 0.78f, 0.9f));
+            rect.localRotation = Quaternion.Euler(0f, 0f, i * 70f);
+            ambient.Sway(rect, 10f + i * 4f, 0.25f + i * 0.08f);
+            ambient.Spin(rect, (i % 2 == 0 ? 1f : -1f) * (5f + i * 2f));
         }
 
         private static void AddOrbits(RectTransform parent, WorldAmbient ambient, GameWorld world)
@@ -299,26 +293,6 @@ namespace NeuroVida.Games.Shared
             return img;
         }
 
-        private static readonly Dictionary<long, Sprite> Gradients = new Dictionary<long, Sprite>();
-
-        private static Sprite VerticalGradient(Color top, Color bottom)
-        {
-            long key = ((long)ColorUtility.ToHtmlStringRGB(top).GetHashCode() << 32) ^ (uint)ColorUtility.ToHtmlStringRGB(bottom).GetHashCode();
-            if (Gradients.TryGetValue(key, out var cached) && cached != null) return cached;
-            const int h = 128;
-            var tex = new Texture2D(2, h, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Bilinear };
-            for (int y = 0; y < h; y++)
-            {
-                var c = Color.Lerp(bottom, top, y / (float)(h - 1));
-                tex.SetPixel(0, y, c);
-                tex.SetPixel(1, y, c);
-            }
-            tex.Apply();
-            var sprite = Sprite.Create(tex, new Rect(0, 0, 2, h), new Vector2(0.5f, 0.5f), 100f);
-            Gradients[key] = sprite;
-            return sprite;
-        }
-
         private static Sprite _thinRing;
 
         /// <summary>Anillo fino (órbita), blanco: el <see cref="RingSprite"/> es demasiado grueso para esto.</summary>
@@ -346,7 +320,7 @@ namespace NeuroVida.Games.Shared
         }
     }
 
-    /// <summary>Animaciones lentas del fondo de un mundo (respirar, mecerse, orbitar, meteoros, letras que suben).
+    /// <summary>Animaciones lentas del fondo de un mundo (respirar, mecerse, girar, orbitar, meteoros, letras que suben).
     /// Todo en tiempo sin escala y sin tocar nada del juego.</summary>
     public sealed class WorldAmbient : MonoBehaviour
     {
@@ -355,6 +329,7 @@ namespace NeuroVida.Games.Shared
 
         private readonly List<(Image img, float baseA, float amp, float speed)> _breathers = new List<(Image, float, float, float)>();
         private readonly List<(RectTransform rect, Vector2 home, float amp, float speed)> _swayers = new List<(RectTransform, Vector2, float, float)>();
+        private readonly List<(RectTransform rect, float degPerSecond)> _spinners = new List<(RectTransform, float)>();
         private readonly List<(RectTransform rect, float radius, float speed, float phase)> _orbiters = new List<(RectTransform, float, float, float)>();
         private readonly List<(RectTransform rect, Vector2 a, Vector2 b)> _lines = new List<(RectTransform, Vector2, Vector2)>();
         private Vector2 _linesLaidFor;
@@ -376,6 +351,8 @@ namespace NeuroVida.Games.Shared
 
         public void Sway(RectTransform rect, float amplitude, float speed) =>
             _swayers.Add((rect, rect.anchoredPosition, amplitude, speed));
+
+        public void Spin(RectTransform rect, float degPerSecond) => _spinners.Add((rect, degPerSecond));
 
         public void Orbit(RectTransform rect, float radius, float speed, float phase) =>
             _orbiters.Add((rect, radius, speed, phase));
@@ -452,6 +429,7 @@ namespace NeuroVida.Games.Shared
             }
             foreach (var s in _swayers)
                 s.rect.anchoredPosition = s.home + new Vector2(Mathf.Sin(_time * s.speed) * s.amp, 0f);
+            foreach (var sp in _spinners) sp.rect.Rotate(0f, 0f, sp.degPerSecond * dt);
             foreach (var o in _orbiters)
             {
                 float a = o.phase + _time * o.speed;

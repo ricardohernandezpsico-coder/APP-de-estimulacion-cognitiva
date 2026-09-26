@@ -28,7 +28,8 @@ namespace NeuroVida.Games.Secuencia
     /// de la App Store tipo Lumosity"):
     ///   - Fichas 3D estilo "clay" (<see cref="TileSprites"/>), paleta vívida y bien separada
     ///     (<see cref="TilePalette"/>), que en reposo se ven atenuadas y al iluminarse se
-    ///     encienden con un resplandor, una onda y un leve rebote.
+    ///     encienden con un resplandor, una onda y un leve rebote. Cada ficha lleva un símbolo de arcilla propio
+    ///     (<see cref="TileGlyphSprite"/>: estrella, luna, planeta...).
     ///   - HUD: insignia de nivel con color por fase + nombre de la fase, vidas en píldora
     ///     (compartida con Parejas) y puntos de progreso de la secuencia (uno por paso) en
     ///     vez de una barra: durante la presentación cuentan cuántas luces hay y durante la
@@ -809,7 +810,20 @@ namespace NeuroVida.Games.Secuencia
             button.transition = Selectable.Transition.None; // la animación de glow/scale la maneja SetTileGlow
             button.onClick.AddListener(() => OnTileTapped(index));
 
-            // Sin etiqueta de texto: fichas que se distinguen solo por color.
+            // Símbolo de arcilla propio de cada ficha (estrella, luna, planeta...): arte del cielo nocturno y
+            // otra pista además del color (daltonismo). Va sobre la cara de la ficha, que está un poco más
+            // arriba del centro del sprite (debajo asoma la sombra dura).
+            var glyphGo = new GameObject("Glyph");
+            glyphGo.transform.SetParent(go.transform, false);
+            var glyphRect = glyphGo.AddComponent<RectTransform>();
+            glyphRect.anchorMin = new Vector2(0.27f, 0.30f);
+            glyphRect.anchorMax = new Vector2(0.73f, 0.76f);
+            glyphRect.offsetMin = Vector2.zero;
+            glyphRect.offsetMax = Vector2.zero;
+            var glyph = glyphGo.AddComponent<Image>();
+            glyph.sprite = TileGlyphSprite.Get(index);
+            glyph.preserveAspect = true;
+            glyph.raycastTarget = false;
 
             _tileButtons[index] = button;
             _tileImages[index] = image;

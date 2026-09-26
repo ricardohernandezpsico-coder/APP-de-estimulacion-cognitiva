@@ -70,10 +70,12 @@ def draw(ic,gid):
         ic.rot.append((-12,36,52)); ic.clay(rrect(14,20,42,60,8),GRAPE); ic.clay([(35,36),(45,50),(35,64),(25,50)],CREAM,border=3.5,shadow=False); ic.rot.pop()
         ic.rot.append((10,64,48)); ic.clay(rrect(42,16,42,60,8),CREAM); ic.clay(star(63,46,15,7,5),CORAL,border=4,shadow=False); ic.rot.pop()
     elif gid=='rutatesoro':
-        ic.clay(star(50,53,42,17,5,True),CORAL)
-        for i in range(5):
-            a=math.radians(-90+i*72); x,y=50+math.cos(a)*20,53+math.sin(a)*20; ic.d.ellipse([*ic.P(x-3.2,y-3.2),*ic.P(x+3.2,y+3.2)],fill=CREAM)
-        ic.d.ellipse([*ic.P(46,49),*ic.P(54,57)],fill=CREAM)
+        ic.clay([(20,76),(16,50),(24,38),(36,50),(38,78)],CORAL)
+        ic.clay([(62,78),(63,52),(74,40),(86,52),(80,76)],SKY)
+        ic.clay([(38,80),(38,34),(50,12),(62,34),(62,80)],GRAPE,gloss=True)
+        ic.d.line([ic.P(50,16),ic.P(50,78)],fill=(0x5E,0x55,0x8A),width=int(3*ic.k))
+        ic.clay([(50+38*math.cos(2*math.pi*i/48),81+11*math.sin(2*math.pi*i/48)) for i in range(48)],(0x8E,0x86,0xC8))
+        sparkle(ic,82,20,10,(255,255,255))
     elif gid=='stroop':
         ic.clay(rrect(34,50,54,34,9),CREAM); ic.stroke([(44,62),(78,62)],SKY,7); ic.stroke([(44,73),(66,73)],CORAL,7)
         ic.clay(drop(30,44,20),CORAL,gloss=True)

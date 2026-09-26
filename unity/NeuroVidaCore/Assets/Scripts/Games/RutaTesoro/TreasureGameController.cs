@@ -11,10 +11,11 @@ using static NeuroVida.Games.Shared.UiKit;
 namespace NeuroVida.Games.RutaTesoro
 {
     /// <summary>
-    /// "Ruta del Tesoro" en Unity (memoria espacial). Un mapa de casillas de arena: durante unos
-    /// segundos se iluminan los tesoros de playa (estrellas de mar, conchas, perlas), luego se ocultan y hay que encontrarlas.
-    /// Con 2 errores la ruta se pierde (cuesta 1 de 3 vidas y se revelan las gemas que faltaban);
-    /// al completarla, el mapa crece y hay más gemas. En modo Reto se suma un reloj para
+    /// "Ruta del Tesoro" en Unity (memoria espacial). Un mapa de placas de roca lunar sobre la superficie de
+    /// una luna: durante unos segundos se iluminan los tesoros espaciales (cristales, estrellas en órbita,
+    /// meteoritos; ver <see cref="TreasureSprites"/>), luego se ocultan y hay que encontrarlos.
+    /// Con 2 errores la ruta se pierde (cuesta 1 de 3 vidas y se revelan los tesoros que faltaban);
+    /// al completarla, el mapa crece y hay más tesoros. En modo Reto se suma un reloj para
     /// encontrarlas. Nada de pantallas intermedias: los cambios de nivel ocurren sobre el mismo
     /// mapa (ola de casillas + aviso arriba). Telemetría: reusa <see cref="StroopTelemetry"/>.
     /// </summary>
@@ -26,7 +27,7 @@ namespace NeuroVida.Games.RutaTesoro
         private const float MarginU = 60f;
         private const float ShapeScale = 0.86f;
 
-        private static readonly Color SandColor = new Color(0xF0 / 255f, 0xD9 / 255f, 0xA6 / 255f);
+        private static readonly Color RockColor = NeuroStyle.Hex(0xC9C3EE); // placa de roca lunar (antes: arena)
         private static readonly Color RevealColor = new Color(0x7D / 255f, 0xD3 / 255f, 0xFC / 255f); // celeste suave: nada dorado (parecía tragamonedas)
         private static readonly Color FoundColor = new Color(0x2D / 255f, 0xD4 / 255f, 0xBF / 255f);
         private static readonly Color WrongColor = new Color(0xFB / 255f, 0x71 / 255f, 0x85 / 255f);
@@ -151,7 +152,7 @@ namespace NeuroVida.Games.RutaTesoro
 
             _treasures = TreasureContract.PickTreasures(spec, _rng);
 
-            // ---- Memorizar: las gemas se iluminan una a una.
+            // ---- Memorizar: los tesoros se iluminan uno a uno.
             _pill.Set($"Memoriza los {spec.Treasures} tesoros", AmberColor);
             SetTimerVisible(true, RevealColor);
             var order = new List<int>(_treasures);
@@ -306,18 +307,18 @@ namespace NeuroVida.Games.RutaTesoro
                 {
                     var tile = _tiles[i];
                     tile.Gem.rectTransform.localScale = Vector3.one * (1f - k);
-                    tile.Image.color = Color.Lerp(RevealColor, SandColor, k);
+                    tile.Image.color = Color.Lerp(RevealColor, RockColor, k);
                 }
                 yield return null;
             }
             foreach (int i in order)
             {
                 _tiles[i].Gem.gameObject.SetActive(false);
-                _tiles[i].Image.color = SandColor;
+                _tiles[i].Image.color = RockColor;
             }
         }
 
-        /// <summary>Al perder la ruta se muestran las gemas que faltaban (semitransparentes) para
+        /// <summary>Al perder la ruta se muestran los tesoros que faltaban (semitransparentes) para
         /// que el jugador vea dónde estaban.</summary>
         private IEnumerator RevealMissed()
         {
@@ -325,7 +326,7 @@ namespace NeuroVida.Games.RutaTesoro
             {
                 var tile = _tiles[i];
                 if (tile.State == TileState.Found) continue;
-                tile.Image.color = Color.Lerp(SandColor, RevealColor, 0.55f);
+                tile.Image.color = Color.Lerp(RockColor, RevealColor, 0.55f);
                 tile.Gem.gameObject.SetActive(true);
                 tile.Gem.sprite = TreasureSprites.ForIndex(i);
                 StartCoroutine(PopGem(tile, true));
@@ -393,7 +394,7 @@ namespace NeuroVida.Games.RutaTesoro
             foreach (var tile in _tiles)
             {
                 tile.State = TileState.Hidden;
-                tile.Image.color = SandColor;
+                tile.Image.color = RockColor;
                 tile.Gem.gameObject.SetActive(false);
                 tile.Mark.gameObject.SetActive(false);
                 tile.Rect.localScale = Vector3.one;
@@ -476,8 +477,8 @@ namespace NeuroVida.Games.RutaTesoro
             bg.transform.SetParent(canvasGo.transform, false);
             var bgRect = bg.AddComponent<RectTransform>();
             Stretch(bgRect);
-            // Mundo "MoonlitIsland": cielo nocturno de la app + su elemento propio (ver Shared/WorldBackdrop.cs).
-            WorldBackdrop.Build(bgRect, GameWorld.MoonlitIsland);
+            // Mundo "TreasureMoon": cielo nocturno de la app + su elemento propio (ver Shared/WorldBackdrop.cs).
+            WorldBackdrop.Build(bgRect, GameWorld.TreasureMoon);
 
             var safeGo = new GameObject("SafeAreaContent");
             safeGo.transform.SetParent(canvasGo.transform, false);
@@ -630,7 +631,7 @@ namespace NeuroVida.Games.RutaTesoro
                 rt.anchoredPosition = new Vector2((c - (n - 1) / 2f) * cell, ((n - 1) / 2f - r) * cell);
                 var img = go.AddComponent<Image>();
                 img.sprite = TileSprites.Get();
-                img.color = SandColor;
+                img.color = RockColor;
                 img.alphaHitTestMinimumThreshold = 0.1f;
                 var button = go.AddComponent<Button>();
                 button.transition = Selectable.Transition.None;

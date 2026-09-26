@@ -559,13 +559,15 @@ namespace NeuroVida.Games.Comparacion
                 r.anchorMin = r.anchorMax = new Vector2(0.5f, 0.5f);
                 r.pivot = new Vector2(0.5f, 0.5f);
                 var img = d.AddComponent<Image>();
-                img.sprite = DiscSprite.Get();
-                img.color = new Color(1f, 1f, 1f, 0.96f);
+                img.sprite = CountStarSprite.Get(); // estrellas de arcilla para contar
+                img.color = Color.white;
+                img.preserveAspect = true;
                 img.raycastTarget = false;
                 view.Dots.Add(img);
             }
 
-            view.Number = MakeText(go.transform, "Number", 230, TextAnchor.MiddleCenter, Color.white, 5f, 0.35f);
+            view.Number = MakeText(go.transform, "Number", 230, TextAnchor.MiddleCenter, Color.white, 0f, 0f);
+            NeuroStyle.ClayText(view.Number, 5f, 9f); // número "de arcilla": contorno tinta y sombra dura
             var nr = view.Number.rectTransform;
             nr.anchorMin = new Vector2(0.10f, 0.20f);
             nr.anchorMax = new Vector2(0.90f, 0.86f);
@@ -575,7 +577,8 @@ namespace NeuroVida.Games.Comparacion
             view.Number.horizontalOverflow = HorizontalWrapMode.Overflow;
             view.Number.verticalOverflow = VerticalWrapMode.Overflow;
 
-            view.Value = MakeText(go.transform, "Value", 64, TextAnchor.MiddleCenter, new Color(1f, 1f, 1f, 0.92f), 2f, 0.35f);
+            view.Value = MakeText(go.transform, "Value", 64, TextAnchor.MiddleCenter, Color.white, 0f, 0f);
+            NeuroStyle.ClayText(view.Value, 3f, 5f);
             var vr = view.Value.rectTransform;
             vr.anchorMin = new Vector2(0.10f, 0.08f);
             vr.anchorMax = new Vector2(0.90f, 0.22f);

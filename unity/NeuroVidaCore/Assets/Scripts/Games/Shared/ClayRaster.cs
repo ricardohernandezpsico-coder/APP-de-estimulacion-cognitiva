@@ -54,6 +54,33 @@ namespace NeuroVida.Games.Shared
             }
         }
 
+        public delegate float ShapeFn(float x, float y);
+        public delegate void PaintFn(ref Px p, float x, float y);
+
+        /// <summary>
+        /// Ícono de arcilla genérico (fila 0 = abajo): sombra dura y borde tinta de la silueta
+        /// <paramref name="body"/>, y encima lo que pinte <paramref name="paint"/> (rellenos, detalles).
+        /// Coordenadas -1..1 multiplicadas por <paramref name="zoom"/> (margen para borde y sombra).
+        /// </summary>
+        public static Color32[] RenderClay(int size, float zoom, float line, float drop, float aa, ShapeFn body, PaintFn paint)
+        {
+            var pixels = new Color32[size * size];
+            for (int py = 0; py < size; py++)
+            {
+                for (int px = 0; px < size; px++)
+                {
+                    float x = ((px + 0.5f) / size * 2f - 1f) * zoom;
+                    float y = ((py + 0.5f) / size * 2f - 1f) * zoom;
+                    var p = new Px();
+                    if (drop > 0f) p.Over(Ink, Cover(body(x, y + drop) - line, aa));
+                    p.Over(Ink, Cover(body(x, y) - line, aa));
+                    paint(ref p, x, y);
+                    pixels[py * size + px] = p.ToColor32();
+                }
+            }
+            return pixels;
+        }
+
         /// <summary>Cobertura antialiaseada de una SDF (1 adentro, 0 afuera, rampa de ancho <paramref name="aa"/>).</summary>
         public static float Cover(float sdf, float aa) => Mathf.Clamp01(0.5f - sdf / aa);
 
@@ -193,6 +220,20 @@ namespace NeuroVida.Games.Shared
             qx += ecx * h;
             qy += ecy * h;
             return Mathf.Sqrt(qx * qx + qy * qy) * Mathf.Sign(qx) - round;
+        }
+
+        /// <summary>
+        /// Media luna (sdMoon de Quilez, distancia exacta): círculo de radio <paramref name="ra"/> en el origen
+        /// menos otro de radio <paramref name="rb"/> corrido <paramref name="d"/> sobre el eje x.
+        /// </summary>
+        public static float Crescent(float x, float y, float d, float ra, float rb)
+        {
+            y = Mathf.Abs(y);
+            float a = (ra * ra - rb * rb + d * d) / (2f * d);
+            float b = Mathf.Sqrt(Mathf.Max(ra * ra - a * a, 0f));
+            if (d * (x * b - y * a) > d * d * Mathf.Max(b - y, 0f))
+                return Mathf.Sqrt((x - a) * (x - a) + (y - b) * (y - b));
+            return Mathf.Max(Mathf.Sqrt(x * x + y * y) - ra, -(Mathf.Sqrt((x - d) * (x - d) + y * y) - rb));
         }
 
         public static float Union(float a, float b) => Mathf.Min(a, b);

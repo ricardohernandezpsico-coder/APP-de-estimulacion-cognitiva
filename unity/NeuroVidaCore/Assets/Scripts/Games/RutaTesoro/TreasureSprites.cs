@@ -5,10 +5,14 @@ using static NeuroVida.Games.Shared.ClayRaster;
 namespace NeuroVida.Games.RutaTesoro
 {
     /// <summary>
-    /// Tesoros de playa (estrella de mar, concha, perla) en dos variantes de color cada uno, en arcilla como el
-    /// resto de la app: relleno plano de la paleta, borde tinta grueso, sombra dura hacia abajo y brillo nítido
-    /// (antes: degradé con contorno del mismo color, estilo sticker). Siguen siendo objetos de playa, no gemas
-    /// doradas (parecían tragamonedas). Sin assets; colores horneados (<c>Image.color</c> en blanco).
+    /// Tesoros ESPACIALES de Ruta del Tesoro, en arcilla como el resto de la app (relleno plano de la paleta,
+    /// borde tinta grueso, sombra dura hacia abajo, brillo nítido):
+    /// - Cristal estelar: tres prismas sobre una roca lunar (uva / rosa).
+    /// - Estrella en órbita: estrella con un anillo inclinado que pasa por detrás (sol / coral).
+    /// - Meteorito: roca con vetas que brillan (lima / celeste).
+    /// Cada uno con un destello crema. Historia: gemas doradas ("parecían casino") → tesoros de playa (estrella
+    /// de mar, concha, perla; Ricardo, 26-sep: "poco adecuado a la dirección espacial") → esto.
+    /// Sin assets; colores horneados (<c>Image.color</c> en blanco).
     /// </summary>
     public static class TreasureSprites
     {
@@ -17,7 +21,10 @@ namespace NeuroVida.Games.RutaTesoro
         private const float Zoom = 1.12f;
         private const float Aa = 0.022f;
         private const float Line = 0.075f;
+        private const float Thin = 0.05f;
         private const float Drop = 0.09f;
+        private static readonly Color Rock = Hex(0x8E86C8);
+        private static readonly Color MeteorRock = Hex(0x7A74B0);
         private static readonly Dictionary<int, Sprite> Cache = new Dictionary<int, Sprite>();
 
         /// <summary>Un tesoro distinto según el índice (tipo = i % 3, variante = (i / 3) % 2).</summary>
@@ -39,37 +46,18 @@ namespace NeuroVida.Games.RutaTesoro
         /// <summary>Píxeles del tesoro (fila 0 = abajo). Separado de <see cref="Get"/> para previsualizar fuera de Unity.</summary>
         public static Color32[] Render(int kind, int variant, int size)
         {
-            var px = new Color32[size * size];
-            for (int py = 0; py < size; py++)
-            {
-                for (int pxi = 0; pxi < size; pxi++)
-                {
-                    float x = ((pxi + 0.5f) / size * 2f - 1f) * Zoom;
-                    float y = ((py + 0.5f) / size * 2f - 1f) * Zoom;
-                    var p = new Px();
-                    p.Over(Ink, Cover(Body(kind, x, y + Drop) - Line, Aa));      // sombra dura
-                    p.Over(Ink, Cover(Body(kind, x, y) - Line, Aa));             // borde tinta
-                    switch (kind)
-                    {
-                        case 0: Starfish(ref p, variant, x, y); break;
-                        case 1: Shell(ref p, variant, x, y); break;
-                        default: Pearl(ref p, variant, x, y); break;
-                    }
-                    px[py * size + pxi] = p.ToColor32();
-                }
-            }
-            return px;
-        }
-
-        /// <summary>Silueta de cada tesoro (para el borde y la sombra).</summary>
-        private static float Body(int kind, float x, float y)
-        {
             switch (kind)
             {
-                case 0: return StarfishSdf(x, y);
-                case 1: return ShellSdf(x, y);
-                default: return Circle(x, y, 0f, 0.02f, 0.60f);
+                case 0: return RenderClay(size, Zoom, Line, Drop, Aa, CrystalBody, (ref Px p, float x, float y) => Crystal(ref p, variant, x, y));
+                case 1: return RenderClay(size, Zoom, Line, Drop, Aa, OrbitStarBody, (ref Px p, float x, float y) => OrbitStar(ref p, variant, x, y));
+                default: return RenderClay(size, Zoom, Line, Drop, Aa, MeteorBody, (ref Px p, float x, float y) => Meteor(ref p, variant, x, y));
             }
+        }
+
+        private static void Part(ref Px p, float sdf, Color fill, float line = Line)
+        {
+            p.Over(Ink, Cover(sdf - line, Aa));
+            p.Over(fill, Cover(sdf, Aa));
         }
 
         private static void Gloss(ref Px p, float x, float y, float cx, float cy, float rx, float ry, float body)
@@ -77,78 +65,103 @@ namespace NeuroVida.Games.RutaTesoro
             p.Over(new Color(1f, 1f, 1f, 0.5f), Cover(Ellipse(x, y, cx, cy, rx, ry), Aa) * Cover(body + 0.03f, Aa));
         }
 
-        // ---------------------------------------------------------------- estrella de mar
-
-        private static float StarfishSdf(float x, float y) => Star(x, y, 0f, -0.02f, 5, 0.84f, 3.4f, 0.14f);
-
-        private static void Starfish(ref Px p, int variant, float x, float y)
+        private static void Sparkle(ref Px p, float x, float y, float cx, float cy, float r)
         {
-            Color main = variant == 0 ? Coral : Orange;
-            float body = StarfishSdf(x, y);
-            p.Over(main, Cover(body, Aa));
-            p.Over(Tint(main, 0.22f), Cover(Star(x, y, 0f, -0.02f, 5, 0.40f, 3.4f, 0.08f), Aa));
-
-            // Puntitos crema a lo largo de cada brazo.
-            for (int arm = 0; arm < 5; arm++)
-            {
-                float a = Mathf.PI / 2f + arm * Mathf.PI * 2f / 5f;
-                for (int d = 0; d < 3; d++)
-                {
-                    float r = 0.24f + d * 0.16f;
-                    float dot = Circle(x, y, Mathf.Cos(a) * r, Mathf.Sin(a) * r - 0.02f, 0.05f - d * 0.009f);
-                    p.Over(Cream, Cover(dot, Aa) * Cover(body + 0.04f, Aa));
-                }
-            }
-            Gloss(ref p, x, y, -0.16f, 0.30f, 0.12f, 0.07f, body);
+            float s = Star(x, y, cx, cy, 4, r, 2.3f, 0.01f);
+            p.Over(Ink, Cover(s - 0.045f, Aa));
+            p.Over(Cream, Cover(s, Aa));
         }
 
-        // ---------------------------------------------------------------- concha (vieira)
+        // ---------------------------------------------------------------- cristal estelar
 
-        private const float ShellCy = -0.40f;
+        private static readonly float[] CrystalMid = { -0.19f, -0.50f, -0.19f, 0.36f, 0f, 0.74f, 0.19f, 0.36f, 0.19f, -0.50f };
+        private static readonly float[] CrystalLeft = { -0.58f, -0.44f, -0.62f, 0.02f, -0.46f, 0.30f, -0.26f, 0.08f, -0.24f, -0.50f };
+        private static readonly float[] CrystalRight = { 0.24f, -0.50f, 0.26f, -0.02f, 0.46f, 0.20f, 0.62f, -0.06f, 0.56f, -0.46f };
 
-        private static float ShellFan(float x, float y)
+        private static float CrystalBody(float x, float y) =>
+            Mathf.Min(Mathf.Min(Polygon(x, y, CrystalMid), Polygon(x, y, CrystalLeft)),
+                Mathf.Min(Polygon(x, y, CrystalRight), Ellipse(x, y, 0f, -0.56f, 0.66f, 0.2f)));
+
+        private static void Crystal(ref Px p, int variant, float x, float y)
         {
-            float dx = x, dy = y - ShellCy;
-            float len = Mathf.Sqrt(dx * dx + dy * dy);
-            float ang = Mathf.Atan2(dy, dx);
-            float scallop = 1.0f + 0.04f * Mathf.Cos(ang * 11f);
-            float fan = (len - 0.86f * scallop) * 0.85f;
-            float cut = (ShellCy - 0.06f - y) * 0.85f;
-            return Mathf.Max(fan, cut);
+            Color main = variant == 0 ? Grape : Pink;
+            // Facetas: la mitad derecha de cada prisma un poco más oscura.
+            float left = Polygon(x, y, CrystalLeft);
+            Part(ref p, left, Tint(main, 0.15f));
+            p.Over(Shade(main, 0.86f), Cover(Mathf.Max(left, -(x + 0.43f) * 0.9f + (y + 0.1f) * 0.2f), Aa));
+            float right = Polygon(x, y, CrystalRight);
+            Part(ref p, right, Tint(main, 0.15f));
+            p.Over(Shade(main, 0.86f), Cover(Mathf.Max(right, 0.44f - x), Aa));
+
+            float mid = Polygon(x, y, CrystalMid);
+            Part(ref p, mid, main);
+            p.Over(Tint(main, 0.35f), Cover(Mathf.Max(mid, x), Aa));
+            p.Over(WithAlpha(Ink, 0.5f), Cover(Mathf.Max(mid + 0.03f, Mathf.Abs(x) - 0.012f), Aa));
+            Gloss(ref p, x, y, -0.10f, 0.20f, 0.04f, 0.18f, mid);
+
+            float rock = Ellipse(x, y, 0f, -0.56f, 0.66f, 0.2f);
+            Part(ref p, rock, Rock);
+            p.Over(Shade(Rock, 0.8f), Cover(Ellipse(x, y, 0.30f, -0.60f, 0.09f, 0.045f), Aa));
+            p.Over(Shade(Rock, 0.8f), Cover(Ellipse(x, y, -0.34f, -0.54f, 0.07f, 0.035f), Aa));
+            Sparkle(ref p, x, y, 0.52f, 0.52f, 0.17f);
         }
 
-        private static float ShellSdf(float x, float y) =>
-            Mathf.Min(ShellFan(x, y), RoundBox(x, y, 0f, ShellCy - 0.04f, 0.22f, 0.12f, 0.06f));
+        // ---------------------------------------------------------------- estrella en órbita
 
-        private static void Shell(ref Px p, int variant, float x, float y)
+        private static float Ring(float x, float y, out float ry)
         {
-            Color main = variant == 0 ? Pink : Grape;
-            float fan = ShellFan(x, y);
-            float hinge = RoundBox(x, y, 0f, ShellCy - 0.04f, 0.22f, 0.12f, 0.06f);
-            p.Over(Shade(main, 0.82f), Cover(hinge, Aa));
-            p.Over(Ink, Cover(Mathf.Max(fan - Line * 0.8f, hinge), Aa));   // línea entre bisagra y abanico
-            p.Over(main, Cover(fan, Aa));
-
-            // Costillas en tinta que salen de la bisagra.
-            float dx = x, dy = y - ShellCy;
-            float ang = Mathf.Atan2(dy, dx);
-            float len = Mathf.Sqrt(dx * dx + dy * dy);
-            float rib = Mathf.Abs(Mathf.Repeat(ang * 5.5f / Mathf.PI + 0.5f, 1f) - 0.5f) * Mathf.PI / 5.5f * len - 0.018f;
-            p.Over(WithAlpha(Ink, 0.55f), Cover(rib, Aa) * Cover(fan + 0.12f, Aa) * Mathf.Clamp01((len - 0.2f) * 8f));
-            Gloss(ref p, x, y, -0.26f, 0.22f, 0.13f, 0.07f, fan);
+            Rotate(x, y, 0f, -0.02f, 0.38f, out float rx, out ry);
+            return Mathf.Abs(Ellipse(rx, ry, 0f, 0f, 0.84f, 0.24f)) - 0.07f;
         }
 
-        // ---------------------------------------------------------------- perla
+        private static float StarShape(float x, float y) => Star(x, y, 0f, -0.02f, 5, 0.66f, 3.0f, 0.09f);
 
-        private static void Pearl(ref Px p, int variant, float x, float y)
+        private static float OrbitStarBody(float x, float y) => Mathf.Min(StarShape(x, y), Ring(x, y, out _));
+
+        private static void OrbitStar(ref Px p, int variant, float x, float y)
         {
-            Color main = variant == 0 ? Cream : Tint(Sky, 0.55f);
-            float body = Circle(x, y, 0f, 0.02f, 0.60f);
-            p.Over(main, Cover(body, Aa));
-            // Sombra propia abajo a la derecha (media luna), plana como en la arcilla de la app.
-            p.Over(Shade(main, 0.86f), Cover(Mathf.Max(body, -Circle(x, y, -0.10f, 0.12f, 0.58f)), Aa));
-            Gloss(ref p, x, y, -0.20f, 0.26f, 0.17f, 0.10f, body);
-            p.Over(new Color(1f, 1f, 1f, 0.9f), Cover(Circle(x, y, 0.08f, 0.36f, 0.05f), Aa));
+            Color main = variant == 0 ? Sun : Coral;
+            Color ringColor = variant == 0 ? Grape : Sky;
+            float ring = Ring(x, y, out float ry);
+            // Mitad de atrás del anillo, estrella, mitad de adelante (el corte no lleva borde).
+            p.Over(Ink, Cover(Mathf.Max(ring - Line, -ry), Aa));
+            p.Over(ringColor, Cover(Mathf.Max(ring, -ry), Aa));
+            float star = StarShape(x, y);
+            Part(ref p, star, main);
+            p.Over(Tint(main, 0.3f), Cover(Star(x, y, 0f, -0.02f, 5, 0.32f, 3.0f, 0.05f), Aa));
+            Gloss(ref p, x, y, -0.14f, 0.16f, 0.09f, 0.055f, star);
+            p.Over(Ink, Cover(Mathf.Max(ring - Line, ry), Aa));
+            p.Over(ringColor, Cover(Mathf.Max(ring, ry), Aa));
+            Sparkle(ref p, x, y, -0.62f, 0.52f, 0.15f);
+        }
+
+        // ---------------------------------------------------------------- meteorito
+
+        private static float MeteorBody(float x, float y)
+        {
+            float ang = Mathf.Atan2(y, x);
+            float len = Mathf.Sqrt(x * x + y * y);
+            float r = 0.64f + 0.06f * Mathf.Sin(3f * ang + 0.4f) + 0.04f * Mathf.Sin(5f * ang + 1.7f) + 0.02f * Mathf.Sin(8f * ang);
+            return (len - r) * 0.85f;
+        }
+
+        private static void Meteor(ref Px p, int variant, float x, float y)
+        {
+            Color vein = variant == 0 ? Lime : Sky;
+            float body = MeteorBody(x, y);
+            p.Over(MeteorRock, Cover(body, Aa));
+            // Vetas brillantes en zigzag: borde tinta fino, color y un centro claro.
+            float veins = Mathf.Min(
+                Mathf.Min(Capsule(x, y, -0.50f, 0.18f, -0.14f, 0.02f, 0.06f), Capsule(x, y, -0.14f, 0.02f, 0.08f, 0.30f, 0.06f)),
+                Mathf.Min(Capsule(x, y, -0.14f, 0.02f, 0.12f, -0.30f, 0.06f), Capsule(x, y, 0.12f, -0.30f, 0.46f, -0.18f, 0.06f)));
+            float inside = Cover(body + 0.05f, Aa);
+            p.Over(Ink, Cover(veins - Thin, Aa) * inside);
+            p.Over(vein, Cover(veins, Aa) * inside);
+            p.Over(Tint(vein, 0.7f), Cover(veins + 0.035f, Aa) * inside);
+            p.Over(Shade(MeteorRock, 0.8f), Cover(Circle(x, y, 0.22f, 0.36f, 0.09f), Aa));
+            p.Over(Shade(MeteorRock, 0.8f), Cover(Circle(x, y, -0.28f, -0.34f, 0.07f), Aa));
+            Gloss(ref p, x, y, -0.30f, 0.42f, 0.14f, 0.06f, body);
+            Sparkle(ref p, x, y, 0.56f, 0.54f, 0.16f);
         }
     }
 }

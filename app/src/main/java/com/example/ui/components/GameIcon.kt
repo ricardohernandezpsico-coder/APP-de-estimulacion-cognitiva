@@ -41,7 +41,7 @@ import kotlin.math.sin
  * sale de lo que se hace en el juego:
  * - Secuencia Lumínica: tablero de 4 fichas con una encendida.
  * - Parejas Ocultas: una carta boca abajo y otra dada vuelta.
- * - Ruta del Tesoro: estrella de mar (los tesoros de playa del juego).
+ * - Ruta del Tesoro: cristales estelares sobre una roca lunar (los tesoros espaciales del juego).
  * - Tinta o Palabra: gota de tinta y tarjeta con palabra.
  * - Cambio de Chip: ficha con flecha y dos flechas de cambio.
  * - Detective de Series: lupa sobre una serie que crece.
@@ -103,13 +103,13 @@ private fun DrawScope.drawGameIcon(id: String, measurer: TextMeasurer) {
       }
     }
     "rutatesoro" -> {
-      clay(star(Offset(50f, 53f), 42f, 17f, 5, round = true), Clay.Coral, gloss = false)
-      // Textura de puntitos de la estrella de mar
-      for (i in 0 until 5) {
-        val a = (-90f + i * 72f) * PI.toFloat() / 180f
-        drawCircle(Cream, 3.2f, Offset(50f + cos(a) * 20f, 53f + sin(a) * 20f))
-      }
-      drawCircle(Cream, 4f, Offset(50f, 53f))
+      // Cristales estelares sobre una roca lunar (como los tesoros del juego).
+      clay(poly(20f, 76f, 16f, 50f, 24f, 38f, 36f, 50f, 38f, 78f), Clay.Coral)
+      clay(poly(62f, 78f, 63f, 52f, 74f, 40f, 86f, 52f, 80f, 76f), Clay.Sky)
+      clay(poly(38f, 80f, 38f, 34f, 50f, 12f, 62f, 34f, 62f, 80f), Clay.Grape, gloss = true)
+      drawLine(Ink.copy(alpha = 0.45f), Offset(50f, 16f), Offset(50f, 78f), 3f, StrokeCap.Round)
+      clay(Path().apply { addOval(Rect(12f, 70f, 88f, 92f)) }, Color(0xFF8E86C8))
+      sparkle(Offset(82f, 20f), 10f, Color.White)
     }
     "stroop" -> {
       clay(roundRect(34f, 50f, 54f, 34f, 9f), Cream)
@@ -186,6 +186,14 @@ private fun DrawScope.clay(
 
 private fun roundRect(x: Float, y: Float, w: Float, h: Float, r: Float) =
   Path().apply { addRoundRect(RoundRect(x, y, x + w, y + h, CornerRadius(r))) }
+
+/** Polígono cerrado a partir de pares x, y. */
+private fun poly(vararg xy: Float) = Path().apply {
+  moveTo(xy[0], xy[1])
+  var i = 2
+  while (i < xy.size) { lineTo(xy[i], xy[i + 1]); i += 2 }
+  close()
+}
 
 private fun circle(c: Offset, r: Float) = Path().apply { addOval(Rect(c.x - r, c.y - r, c.x + r, c.y + r)) }
 

@@ -1,7 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <!--
     Vista previa EXACTA del arte procedural de los juegos sin Unity: compila los generadores reales
-    (ClayRaster, SymbolSprite, CardSprites, TreasureSprites, HeartSprite) contra un UnityEngine mínimo
+    (ClayRaster, SymbolSprite, CardSprites, TreasureSprites, HeartSprite, TileGlyphSprite,
+    CountStarSprite, MagnifierSprite, TileSprites, LunarSurfaceSprite) contra un UnityEngine mínimo
     (UnityStub.cs: Mathf, Color, Texture2D que guarda los píxeles...) y vuelca cada sprite a un .raw.
     Uso:  dotnet run (proyecto tools/art-preview), argumento: carpeta_raw
           luego: python3 tools/art-preview/compose.py carpeta_raw [opción antes]
@@ -23,5 +24,11 @@
     <Compile Include="$(Src)/Parejas/CardSprites.cs" />
     <Compile Include="$(Src)/RutaTesoro/TreasureSprites.cs" />
     <Compile Include="$(Src)/Secuencia/HeartSprite.cs" />
+    <Compile Include="$(Src)/Secuencia/TileGlyphSprite.cs" />
+    <Compile Include="$(Src)/Secuencia/TileSprites.cs" />
+    <Compile Include="$(Src)/Secuencia/TilePalette.cs" />
+    <Compile Include="$(Src)/Shared/LunarSurfaceSprite.cs" />
+    <Compile Include="$(Src)/Comparacion/CountStarSprite.cs" />
+    <Compile Include="$(Src)/Series/MagnifierSprite.cs" />
   </ItemGroup>
 </Project>

@@ -280,20 +280,6 @@ namespace NeuroVida.Games.Parejas
             p.Gloss(x, y, -0.60f, -0.10f, 0.06f, 0.18f, body);
         }
 
-        /// <summary>
-        /// Media luna (sdMoon de Quilez, distancia exacta): círculo de radio <paramref name="ra"/> en el origen
-        /// menos otro de radio <paramref name="rb"/> corrido <paramref name="d"/> sobre el eje x.
-        /// </summary>
-        private static float Crescent(float x, float y, float d, float ra, float rb)
-        {
-            y = Mathf.Abs(y);
-            float a = (ra * ra - rb * rb + d * d) / (2f * d);
-            float b = Mathf.Sqrt(Mathf.Max(ra * ra - a * a, 0f));
-            if (d * (x * b - y * a) > d * d * Mathf.Max(b - y, 0f))
-                return Mathf.Sqrt((x - a) * (x - a) + (y - b) * (y - b));
-            return Mathf.Max(Mathf.Sqrt(x * x + y * y) - ra, -(Mathf.Sqrt((x - d) * (x - d) + y * y) - rb));
-        }
-
         /// <summary>Platillo volador: cúpula, disco con luces y panza.</summary>
         private static void DrawUfo(ref Pen p, float x, float y, Color main)
         {
